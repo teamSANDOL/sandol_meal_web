@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Request Detail - Sandol Meal Web{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+        <p class="ops-section-title">Admin</p>
+        <h1 class="mt-2 text-3xl font-black tracking-tight">관리자 식당 등록 요청 상세</h1>
+        <p class="mt-2 text-sm text-slate-600">요청 내용을 검토하고 승인 또는 거부 처리를 진행합니다.</p>
+    </div>
+    <a class="btn btn-ghost" href="{{ request.url_for('admin_requests_page') }}">목록으로</a>
+</div>
+
+{% if success_message %}
+<div class="alert alert-success mb-4"><span>완료: {{ success_message }}</span></div>
+{% endif %}
+
+{% if error_message %}
+<div class="alert alert-error mb-4"><span>오류: {{ error_message }}</span></div>
+{% endif %}
+
+{% if restaurant_request %}
+{% set detail_id = restaurant_request.get("id") or restaurant_request.get("request_id") or request_id %}
+<div class="grid gap-6">
+    <section class="ops-card">
+        <div class="card-body">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 class="card-title">기본 정보</h2>
+                <span class="badge badge-outline">{{ restaurant_request.get("status", "") }}</span>
+            </div>
+            <dl class="ops-detail-list mt-2">
+                <div class="ops-detail-item"><dt>ID</dt><dd>{{ detail_id }}</dd></div>
+                <div class="ops-detail-item"><dt>식당명</dt><dd>{{ restaurant_request.get("name", "") }}</dd></div>
+                <div class="ops-detail-item"><dt>식당 유형</dt><dd>{{ restaurant_request.get("establishment_type", "") }}</dd></div>
+                <div class="ops-detail-item"><dt>1인 가격</dt><dd>{% if restaurant_request.get("price") %}{{ restaurant_request.get("price") }}원{% else %}-{% endif %}</dd></div>
+                <div class="ops-detail-item"><dt>제출 시간</dt><dd>{{ restaurant_request.get("submitted_time", "") }}</dd></div>
+                <div class="ops-detail-item"><dt>검토 시간</dt><dd>{{ restaurant_request.get("reviewed_time", "") }}</dd></div>
+                <div class="ops-detail-item sm:col-span-2"><dt>거절 사유</dt><dd>{{ restaurant_request.get("rejection_message", "") or "-" }}</dd></div>
+            </dl>
+        </div>
+    </section>
+
+{% set location = restaurant_request.get("location") %}
+{% if location %}
+    <section class="ops-card">
+        <div class="card-body">
+            <h2 class="card-title">위치</h2>
+            <dl class="ops-detail-list mt-2">
+                <div class="ops-detail-item"><dt>캠퍼스 내부</dt><dd>{{ location.get("is_campus", "") }}</dd></div>
+                <div class="ops-detail-item"><dt>건물</dt><dd>{{ location.get("building", "") }}</dd></div>
+                <div class="ops-detail-item sm:col-span-2"><dt>지도 링크</dt><dd>{{ location.get("map_links", "") }}</dd></div>
+                <div class="ops-detail-item"><dt>위도</dt><dd>{{ location.get("latitude", "") }}</dd></div>
+                <div class="ops-detail-item"><dt>경도</dt><dd>{{ location.get("longitude", "") }}</dd></div>
+            </dl>
+        </div>
+    </section>
+{% else %}
+    <div class="alert"><span>위치 정보가 없습니다.</span></div>
+{% endif %}
+
+    <section class="ops-card">
+        <div class="card-body">
+            <h2 class="card-title">시간</h2>
+            <dl class="ops-detail-list mt-2">
+                <div class="ops-detail-item"><dt>운영 시간</dt><dd>{{ restaurant_request.get("opening_time", "") }}</dd></div>
+                <div class="ops-detail-item"><dt>휴식 시간</dt><dd>{{ restaurant_request.get("break_time", "") }}</dd></div>
+                <div class="ops-detail-item"><dt>아침 시간</dt><dd>{{ restaurant_request.get("breakfast_time", "") }}</dd></div>
+                <div class="ops-detail-item"><dt>브런치 시간</dt><dd>{{ restaurant_request.get("brunch_time", "") }}</dd></div>
+                <div class="ops-detail-item"><dt>점심 시간</dt><dd>{{ restaurant_request.get("lunch_time", "") }}</dd></div>
+                <div class="ops-detail-item"><dt>저녁 시간</dt><dd>{{ restaurant_request.get("dinner_time", "") }}</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    <section class="ops-card">
+        <div class="card-body gap-5">
+            <h2 class="card-title">검토</h2>
+            <div class="ops-action-grid">
+                <form class="rounded-2xl border border-success/30 bg-success/5 p-4" method="post" action="{{ request.url_for('approve_admin_request', request_id=detail_id) }}" hx-post="{{ request.url_for('approve_admin_request', request_id=detail_id) }}" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-disabled-elt="find button[type='submit']" hx-indicator="#global-loading">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <p class="mb-4 text-sm text-slate-600">정보가 올바르면 요청을 승인합니다.</p>
+                    <button class="btn btn-success w-full" type="submit">
+                        <span class="htmx-indicator loading loading-spinner loading-sm"></span>
+                        승인
+                    </button>
+                </form>
+
+                <form class="rounded-2xl border border-error/30 bg-error/5 p-4" method="post" action="{{ request.url_for('reject_admin_request', request_id=detail_id) }}" hx-post="{{ request.url_for('reject_admin_request', request_id=detail_id) }}" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-disabled-elt="find button[type='submit']" hx-indicator="#global-loading">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <div class="form-control gap-2">
+                        <label class="ops-label" for="message">거부 사유</label>
+                        <textarea class="ops-textarea" id="message" name="message" rows="4" cols="40" required></textarea>
+                    </div>
+                    <button class="btn btn-error mt-4 w-full" type="submit">
+                        <span class="htmx-indicator loading loading-spinner loading-sm"></span>
+                        거부
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+</div>
+{% elif not error_message %}
+<div class="ops-card"><div class="card-body items-center py-14 text-center"><h2 class="card-title">요청 정보를 찾을 수 없습니다.</h2></div></div>
+{% endif %}
+{% endblock %}
