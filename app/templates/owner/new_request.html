@@ -1,0 +1,752 @@
+{% extends "base.html" %}
+
+{% block title %}New Owner Request - Sandol Meal Web{% endblock %}
+
+{% block content %}
+{% set time_options = [
+    '00:00', '00:30', '01:00', '01:30', '02:00', '02:30', '03:00', '03:30',
+    '04:00', '04:30', '05:00', '05:30', '06:00', '06:30', '07:00', '07:30',
+    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30',
+    '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30'
+] %}
+{% set building_options = ['TIP', '중앙', 'E동', '산학융합관'] %}
+{% set campus_choice = form_values.get('campus_choice', 'campus' if form_values.get('is_campus') or form_values.get('building') else 'offcampus' if form_values.get('naver_map_link') or form_values.get('kakao_map_link') else '') %}
+{% set menu_change_choice = form_values.get('menu_changes', 'yes' if form_values.get('establishment_type') == 'variable_korean_buffet' else 'no' if form_values.get('establishment_type') in ['fixed_menu_restaurant', 'fixed_korean_buffet'] else '') %}
+{% set fixed_menu_choice = form_values.get('has_fixed_menu_board', 'yes' if form_values.get('establishment_type') == 'fixed_menu_restaurant' else 'no' if form_values.get('establishment_type') == 'fixed_korean_buffet' else '') %}
+{% set has_break_choice = form_values.get('has_break_time', 'yes' if form_values.get('break_time_start') or form_values.get('break_time_end') else '') %}
+{% set has_fixed_price_choice = form_values.get('has_fixed_price', 'yes' if form_values.get('price') else '') %}
+{% set selected_building = form_values.get('building', '') %}
+{% set meal_types_choice = form_values.get('meal_types_choice', 'custom' if form_values.get('breakfast_time_start') or form_values.get('breakfast_time_end') or form_values.get('lunch_time_start') or form_values.get('lunch_time_end') or form_values.get('dinner_time_start') or form_values.get('dinner_time_end') else 'opening_only') %}
+
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+        <p class="ops-section-title">Owner</p>
+        <h1 class="mt-2 text-3xl font-black tracking-tight">새 식당 등록 요청</h1>
+        <p class="mt-2 text-sm text-slate-600">한 질문씩 차근차근 답하면서 식당 정보를 입력해주세요.</p>
+    </div>
+    <a class="btn btn-ghost" href="{{ request.url_for('owner_requests_page') }}">목록으로</a>
+</div>
+
+{% if error_message %}
+<div class="alert alert-error mb-4"><span>오류: {{ error_message }}</span></div>
+{% endif %}
+
+<form class="grid gap-6" method="post" action="{{ request.url_for('create_owner_request') }}" hx-post="{{ request.url_for('create_owner_request') }}" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-disabled-elt="find button[type='submit']" hx-indicator="#global-loading">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input id="is_campus" name="is_campus" type="hidden" value="{% if campus_choice == 'campus' %}true{% endif %}">
+    <input id="establishment_type" name="establishment_type" type="hidden" value="{{ form_values.get('establishment_type', '') }}">
+
+    <section class="ops-card overflow-hidden">
+        <div class="card-body gap-6 p-6 sm:p-8 lg:p-10">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 class="card-title">식당 등록 질문</h2>
+                    <p class="text-sm text-slate-600">답변에 맞춰 필요한 질문만 이어서 보여드릴게요.</p>
+                </div>
+                <span id="step-progress" class="badge badge-primary badge-outline">질문 1 / 1</span>
+            </div>
+
+            <div class="question-step space-y-5" data-step="name">
+                <div>
+                    <p class="ops-section-title">Q1</p>
+                    <h3 class="mt-3 text-2xl font-black tracking-tight">식당 이름이 무엇인가요?</h3>
+                    <p class="mt-2 text-sm text-slate-600">사용자에게 보여줄 식당 이름을 입력해주세요.</p>
+                </div>
+                <input class="ops-input text-base" id="name" name="name" type="text" value="{{ form_values.get('name', '') }}" placeholder="예: 산학식당" required>
+                <div class="flex justify-end">
+                    <button class="btn btn-primary" type="button" data-next>다음</button>
+                </div>
+            </div>
+
+            <div class="question-step hidden space-y-5" data-step="campus">
+                <div>
+                    <p class="ops-section-title">Q2</p>
+                    <h3 class="mt-3 text-2xl font-black tracking-tight">식당이 교내에 있나요, 교외에 있나요?</h3>
+                    <p class="mt-2 text-sm text-slate-600">위치에 따라 필요한 정보를 다르게 물어볼게요.</p>
+                </div>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <label class="ops-choice-card" data-autonext="true">
+                        <input class="sr-only" type="radio" name="campus_choice" value="campus" {% if campus_choice == 'campus' %}checked{% endif %}>
+                        <span class="block text-base font-semibold text-slate-900">교내에 있어요</span>
+                        <span class="mt-1 block text-sm text-slate-500">학교 안 또는 교내 건물에 위치한 식당</span>
+                    </label>
+                    <label class="ops-choice-card" data-autonext="true">
+                        <input class="sr-only" type="radio" name="campus_choice" value="offcampus" {% if campus_choice == 'offcampus' %}checked{% endif %}>
+                        <span class="block text-base font-semibold text-slate-900">교외에 있어요</span>
+                        <span class="mt-1 block text-sm text-slate-500">학교 밖에 위치한 식당</span>
+                    </label>
+                </div>
+                <div class="flex justify-between">
+                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
+                    <button class="btn btn-primary" type="button" data-next>다음</button>
+                </div>
+            </div>
+
+            <div class="question-step hidden space-y-5" data-step="campus-location">
+                <div>
+                    <p class="ops-section-title">Q3</p>
+                    <h3 class="mt-3 text-2xl font-black tracking-tight">식당이 위치한 건물이 어디인가요?</h3>
+                    <p class="mt-2 text-sm text-slate-600">어느 건물에 있는지 선택해주세요.</p>
+                </div>
+                    <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                        {% for option in building_options %}
+                        <label class="ops-choice-card" data-autonext="true">
+                            <input class="sr-only" type="radio" name="building_choice" value="{{ option }}" {% if selected_building == option %}checked{% endif %}>
+                            <span class="block text-base font-semibold text-slate-900">{{ option }}</span>
+                        </label>
+                        {% endfor %}
+                        <label class="ops-choice-card sm:col-span-2 xl:col-span-1">
+                            <input class="sr-only" type="radio" name="building_choice" value="custom" {% if selected_building and selected_building not in building_options %}checked{% endif %}>
+                            <span class="block text-base font-semibold text-slate-900">기타</span>
+                            <span class="mt-1 block text-sm text-slate-500">직접 입력</span>
+                    </label>
+                </div>
+                <div id="custom-building-wrap" class="hidden">
+                    <label class="ops-label" for="building">기타 건물명을 입력해주세요.</label>
+                    <input class="ops-input mt-2" id="building" name="building" type="text" value="{{ form_values.get('building', '') }}" placeholder="예: 학생회관">
+                </div>
+                <div class="flex justify-between">
+                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
+                    <button class="btn btn-primary" type="button" data-next>다음</button>
+                </div>
+            </div>
+
+            <div class="question-step hidden space-y-5" data-step="offcampus-location">
+                <div>
+                    <p class="ops-section-title">Q3</p>
+                    <h3 class="mt-3 text-2xl font-black tracking-tight">가게 위치를 알려주세요.</h3>
+                    <p class="mt-2 text-sm text-slate-600">네이버 지도 링크나 카카오 지도 링크 중 하나 이상 입력해주세요.</p>
+                </div>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label class="ops-label" for="naver_map_link">네이버 지도 링크</label>
+                        <input class="ops-input mt-2" id="naver_map_link" name="naver_map_link" type="url" value="{{ form_values.get('naver_map_link', '') }}" placeholder="https://map.naver.com/...">
+                    </div>
+                    <div>
+                        <label class="ops-label" for="kakao_map_link">카카오 지도 링크</label>
+                        <input class="ops-input mt-2" id="kakao_map_link" name="kakao_map_link" type="url" value="{{ form_values.get('kakao_map_link', '') }}" placeholder="https://place.map.kakao.com/...">
+                    </div>
+                </div>
+                <details class="rounded-2xl border border-base-300 bg-base-100 p-4">
+                    <summary class="cursor-pointer text-sm font-semibold text-slate-700">좌표를 직접 넣고 싶다면 열기</summary>
+                    <div class="mt-4 grid gap-4 md:grid-cols-2">
+                        <div>
+                            <label class="ops-label" for="latitude">위도</label>
+                            <input class="ops-input mt-2" id="latitude" name="latitude" type="number" step="any" value="{{ form_values.get('latitude', '') }}">
+                        </div>
+                        <div>
+                            <label class="ops-label" for="longitude">경도</label>
+                            <input class="ops-input mt-2" id="longitude" name="longitude" type="number" step="any" value="{{ form_values.get('longitude', '') }}">
+                        </div>
+                    </div>
+                </details>
+                <div class="flex justify-between">
+                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
+                    <button class="btn btn-primary" type="button" data-next>다음</button>
+                </div>
+            </div>
+
+            <div class="question-step hidden space-y-5" data-step="menu-change">
+                <div>
+                    <p class="ops-section-title">Q5</p>
+                    <h3 class="mt-3 text-2xl font-black tracking-tight">식당의 메뉴가 매일 바뀌나요?</h3>
+                    <p class="mt-2 text-sm text-slate-600">매일 또는 끼니마다 메뉴가 달라지면 `예`, 비교적 고정적이면 `아니요`를 선택해주세요.</p>
+                </div>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <label class="ops-choice-card" data-autonext="true">
+                        <input class="sr-only" type="radio" name="menu_changes" value="yes" {% if menu_change_choice == 'yes' %}checked{% endif %}>
+                        <span class="block text-base font-semibold text-slate-900">예, 매일 또는 매끼니마다 바뀌어요</span>
+                        <span class="mt-1 block text-sm text-slate-500">날짜나 끼니에 따라 제공 메뉴가 자주 달라져요.</span>
+                    </label>
+                    <label class="ops-choice-card" data-autonext="true">
+                        <input class="sr-only" type="radio" name="menu_changes" value="no" {% if menu_change_choice == 'no' %}checked{% endif %}>
+                        <span class="block text-base font-semibold text-slate-900">아니요, 비교적 고정적이에요</span>
+                        <span class="mt-1 block text-sm text-slate-500">다음 질문에서 식당 운영 방식을 조금 더 확인할게요.</span>
+                    </label>
+                </div>
+                <div class="flex justify-between">
+                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
+                    <button class="btn btn-primary" type="button" data-next>다음</button>
+                </div>
+            </div>
+
+            <div class="question-step hidden space-y-5" data-step="menu-board">
+                <div>
+                    <p class="ops-section-title">Q6</p>
+                    <h3 class="mt-3 text-2xl font-black tracking-tight">고정된 메뉴판이 있나요?</h3>
+                    <p class="mt-2 text-sm text-slate-600">손님이 메뉴판을 보고 원하는 메뉴를 골라 주문하는 식당인지 알려주세요.</p>
+                </div>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <label class="ops-choice-card" data-autonext="true">
+                        <input class="sr-only" type="radio" name="has_fixed_menu_board" value="yes" {% if fixed_menu_choice == 'yes' %}checked{% endif %}>
+                        <span class="block text-base font-semibold text-slate-900">예, 고정된 메뉴판이 있어요</span>
+                        <span class="mt-1 block text-sm text-slate-500">메뉴판을 보고 원하는 메뉴를 선택해 주문할 수 있어요.</span>
+                    </label>
+                    <label class="ops-choice-card" data-autonext="true">
+                        <input class="sr-only" type="radio" name="has_fixed_menu_board" value="no" {% if fixed_menu_choice == 'no' %}checked{% endif %}>
+                        <span class="block text-base font-semibold text-slate-900">아니요, 정해진 한 끼 식사 형태예요</span>
+                        <span class="mt-1 block text-sm text-slate-500">메뉴판에서 고르는 방식이 아니라, 정해진 구성으로 식사가 제공돼요.</span>
+                    </label>
+                </div>
+                <div class="flex justify-between">
+                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
+                    <button class="btn btn-primary" type="button" data-next>다음</button>
+                </div>
+            </div>
+
+            <div class="question-step hidden space-y-5" data-step="opening-time">
+                <div>
+                    <p class="ops-section-title">Q7</p>
+                    <h3 class="mt-3 text-2xl font-black tracking-tight">식당의 운영 시간을 입력해주세요.</h3>
+                    <p class="mt-2 text-sm text-slate-600">먼저 식당 전체 운영 시간을 입력해주세요.</p>
+                </div>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div class="form-control gap-2">
+                        <label class="ops-label" for="opening_time_start">여는 시간</label>
+                        <select class="ops-select" id="opening_time_start" name="opening_time_start" required>
+                            <option value="">선택</option>
+                            {% for option in time_options %}
+                            <option value="{{ option }}" {% if form_values.get('opening_time_start') == option %}selected{% endif %}>{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-control gap-2">
+                        <label class="ops-label" for="opening_time_end">닫는 시간</label>
+                        <select class="ops-select" id="opening_time_end" name="opening_time_end" required>
+                            <option value="">선택</option>
+                            {% for option in time_options %}
+                            <option value="{{ option }}" {% if form_values.get('opening_time_end') == option %}selected{% endif %}>{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-between">
+                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
+                    <button class="btn btn-primary" type="button" data-next>다음</button>
+                </div>
+            </div>
+
+            <div class="question-step hidden space-y-5" data-step="meal-times">
+                <div>
+                    <p class="ops-section-title">Q8</p>
+                    <h3 class="mt-3 text-2xl font-black tracking-tight">제공하는 식사 종류를 선택해주세요.</h3>
+                    <p class="mt-2 text-sm text-slate-600">식사별 운영 시간을 따로 관리한다면 선택하고, 아니면 전체 운영시간만 사용할게요.</p>
+                </div>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    {% for meal_key, meal_label in [('breakfast', '아침'), ('lunch', '점심'), ('dinner', '저녁')] %}
+                    <label class="ops-choice-card">
+                        <input class="sr-only" type="checkbox" name="meal_types" value="{{ meal_key }}" {% if meal_key == 'breakfast' and (form_values.get('breakfast_time_start') or form_values.get('breakfast_time_end')) %}checked{% endif %}{% if meal_key == 'lunch' and (form_values.get('lunch_time_start') or form_values.get('lunch_time_end')) %}checked{% endif %}{% if meal_key == 'dinner' and (form_values.get('dinner_time_start') or form_values.get('dinner_time_end')) %}checked{% endif %}>
+                        <span class="block text-base font-semibold text-slate-900">{{ meal_label }}</span>
+                    </label>
+                    {% endfor %}
+                    <button class="btn btn-outline sm:col-span-2 xl:col-span-1" type="button" id="meal-types-opening-only">구분하지 않아요</button>
+                    <input id="meal_types_choice" name="meal_types_choice" type="hidden" value="{{ meal_types_choice }}">
+                </div>
+                <div id="meal-time-fields" class="grid gap-5 md:grid-cols-2 {% if meal_types_choice != 'custom' %}hidden{% endif %}">
+                    <div class="ops-card border border-base-200 bg-base-100 {% if not (form_values.get('breakfast_time_start') or form_values.get('breakfast_time_end')) %}hidden{% endif %}" data-meal-block="breakfast">
+                        <div class="card-body gap-3 p-4">
+                            <h4 class="font-bold text-slate-900">아침 운영 시간</h4>
+                            <select class="ops-select" id="breakfast_time_start" name="breakfast_time_start">
+                                <option value="">시작 선택</option>
+                                {% for option in time_options %}
+                                <option value="{{ option }}" {% if form_values.get('breakfast_time_start') == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                            <select class="ops-select" id="breakfast_time_end" name="breakfast_time_end">
+                                <option value="">종료 선택</option>
+                                {% for option in time_options %}
+                                <option value="{{ option }}" {% if form_values.get('breakfast_time_end') == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="ops-card border border-base-200 bg-base-100 {% if not (form_values.get('lunch_time_start') or form_values.get('lunch_time_end')) %}hidden{% endif %}" data-meal-block="lunch">
+                        <div class="card-body gap-3 p-4">
+                            <h4 class="font-bold text-slate-900">점심 운영 시간</h4>
+                            <select class="ops-select" id="lunch_time_start" name="lunch_time_start">
+                                <option value="">시작 선택</option>
+                                {% for option in time_options %}
+                                <option value="{{ option }}" {% if form_values.get('lunch_time_start') == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                            <select class="ops-select" id="lunch_time_end" name="lunch_time_end">
+                                <option value="">종료 선택</option>
+                                {% for option in time_options %}
+                                <option value="{{ option }}" {% if form_values.get('lunch_time_end') == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="ops-card border border-base-200 bg-base-100 {% if not (form_values.get('dinner_time_start') or form_values.get('dinner_time_end')) %}hidden{% endif %}" data-meal-block="dinner">
+                        <div class="card-body gap-3 p-4">
+                            <h4 class="font-bold text-slate-900">저녁 운영 시간</h4>
+                            <select class="ops-select" id="dinner_time_start" name="dinner_time_start">
+                                <option value="">시작 선택</option>
+                                {% for option in time_options %}
+                                <option value="{{ option }}" {% if form_values.get('dinner_time_start') == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                            <select class="ops-select" id="dinner_time_end" name="dinner_time_end">
+                                <option value="">종료 선택</option>
+                                {% for option in time_options %}
+                                <option value="{{ option }}" {% if form_values.get('dinner_time_end') == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-between">
+                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
+                    <button class="btn btn-primary" type="button" data-next>다음</button>
+                </div>
+            </div>
+
+            <div class="question-step hidden space-y-5" data-step="breaktime">
+                <div>
+                    <p class="ops-section-title">Q8</p>
+                    <h3 class="mt-3 text-2xl font-black tracking-tight">브레이크 타임이 있나요?</h3>
+                    <p class="mt-2 text-sm text-slate-600">브레이크 타임이 있다면 입력하고, 없다면 그대로 넘어가면 됩니다.</p>
+                </div>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <label class="ops-choice-card" data-autonext="true">
+                        <input class="sr-only" type="radio" name="has_break_time" value="yes" {% if has_break_choice == 'yes' %}checked{% endif %}>
+                        <span class="block text-base font-semibold text-slate-900">예, 브레이크 타임이 있어요</span>
+                    </label>
+                    <label class="ops-choice-card" data-autonext="true">
+                        <input class="sr-only" type="radio" name="has_break_time" value="no" {% if has_break_choice == 'no' %}checked{% endif %}>
+                        <span class="block text-base font-semibold text-slate-900">아니요, 쉬지 않고 운영해요</span>
+                    </label>
+                </div>
+                <div id="break-time-wrap" class="grid gap-4 md:grid-cols-2 hidden">
+                    <div class="form-control gap-2">
+                        <label class="ops-label" for="break_time_start">브레이크 시작</label>
+                        <select class="ops-select" id="break_time_start" name="break_time_start">
+                            <option value="">선택 안 함</option>
+                            {% for option in time_options %}
+                            <option value="{{ option }}" {% if form_values.get('break_time_start') == option %}selected{% endif %}>{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-control gap-2">
+                        <label class="ops-label" for="break_time_end">브레이크 종료</label>
+                        <select class="ops-select" id="break_time_end" name="break_time_end">
+                            <option value="">선택 안 함</option>
+                            {% for option in time_options %}
+                            <option value="{{ option }}" {% if form_values.get('break_time_end') == option %}selected{% endif %}>{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-between">
+                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
+                    <button class="btn btn-primary" type="button" data-next>다음</button>
+                </div>
+            </div>
+
+            <div class="question-step hidden space-y-5" data-step="price">
+                <div>
+                    <p class="ops-section-title">Q9</p>
+                    <h3 class="mt-3 text-2xl font-black tracking-tight">가격 정보를 입력해주세요.</h3>
+                    <p id="price-question-help" class="mt-2 text-sm text-slate-600">가격이 정해져 있는지 알려주시고, 필요하면 금액도 입력해주세요.</p>
+                </div>
+                <div id="price-choice-wrap" class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <label class="ops-choice-card" data-autonext="true">
+                        <input class="sr-only" type="radio" name="has_fixed_price" value="yes" {% if has_fixed_price_choice == 'yes' %}checked{% endif %}>
+                        <span class="block text-base font-semibold text-slate-900">예, 정해져 있어요</span>
+                            <span class="mt-1 block text-sm text-slate-500">보통 내는 1인 가격이 정해져 있다면 입력합니다.</span>
+                    </label>
+                    <label class="ops-choice-card" data-autonext="true">
+                        <input class="sr-only" type="radio" name="has_fixed_price" value="no" {% if has_fixed_price_choice == 'no' %}checked{% endif %}>
+                        <span class="block text-base font-semibold text-slate-900">아니요, 메뉴마다 달라요</span>
+                            <span class="mt-1 block text-sm text-slate-500">메뉴마다 다르거나 자주 변하면 이렇게 선택하세요.</span>
+                    </label>
+                </div>
+                <div id="price-wrap" class="hidden">
+                    <label class="ops-label" for="price">1인 가격(원)</label>
+                    <input class="ops-input mt-2" id="price" name="price" type="number" min="1" step="1" value="{{ form_values.get('price', '') }}" placeholder="예: 7000">
+                    <p id="price-help" class="mt-2 text-xs text-slate-500">정해진 가격이 있을 때만 입력하세요.</p>
+                </div>
+                <div class="flex justify-between">
+                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
+                    <button class="btn btn-primary" type="button" data-next>다음</button>
+                </div>
+            </div>
+
+            <div class="question-step hidden space-y-5" data-step="submit">
+                <div>
+                    <p class="ops-section-title">완료 전 확인</p>
+                    <h3 class="mt-3 text-2xl font-black tracking-tight">입력한 내용을 검토하고 제출해주세요.</h3>
+                    <p class="mt-2 text-sm text-slate-600">입력한 내용을 한 번 확인한 뒤 제출해주세요. 제출 후 상태는 목록과 상세 화면에서 볼 수 있습니다.</p>
+                </div>
+                <section class="ops-review-card">
+                    <div class="ops-review-hero">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">핵심 요약</p>
+                            <h4 class="mt-2 text-xl font-black text-slate-950" data-summary="name">{{ form_values.get('name', '-') }}</h4>
+                            <p class="mt-2 text-sm text-slate-600">제출 전에 식당 이름, 유형, 운영 방식이 맞는지만 먼저 확인해주세요.</p>
+                        </div>
+                        <span class="badge badge-primary badge-outline text-sm" data-summary="type">{{ form_values.get('establishment_type', '-') }}</span>
+                    </div>
+                </section>
+                <details class="ops-review-details text-sm text-slate-600">
+                    <summary class="ops-review-summary">세부내용 더보기</summary>
+                    <div class="mt-5 grid gap-5 md:grid-cols-2">
+                        <div>
+                            <p class="font-semibold text-slate-900">기본 정보</p>
+                            <dl class="ops-review-list mt-3 space-y-2">
+                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">식당 이름</dt><dd data-summary="detail-name">{{ form_values.get('name', '-') }}</dd></div>
+                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">교내/교외</dt><dd data-summary="detail-campus">{% if campus_choice == 'campus' %}교내{% elif campus_choice == 'offcampus' %}교외{% else %}-{% endif %}</dd></div>
+                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">건물</dt><dd data-summary="detail-building">{{ form_values.get('building', '-') or '-' }}</dd></div>
+                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">네이버 지도 링크</dt><dd class="break-all" data-summary="detail-naver">{{ form_values.get('naver_map_link', '-') or '-' }}</dd></div>
+                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">카카오 지도 링크</dt><dd class="break-all" data-summary="detail-kakao">{{ form_values.get('kakao_map_link', '-') or '-' }}</dd></div>
+                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">위도/경도</dt><dd data-summary="detail-coordinates">{% if form_values.get('latitude') or form_values.get('longitude') %}{{ form_values.get('latitude', '-') or '-' }} / {{ form_values.get('longitude', '-') or '-' }}{% else %}-{% endif %}</dd></div>
+                            </dl>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-slate-900">운영/가격 정보</p>
+                            <dl class="ops-review-list mt-3 space-y-2">
+                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">유형</dt><dd><span data-summary="type-detail">{{ form_values.get('establishment_type', '-') }}</span></dd></div>
+                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">운영 시간</dt><dd data-summary="detail-opening">{{ form_values.get('opening_time_start', '-') or '-' }} ~ {{ form_values.get('opening_time_end', '-') or '-' }}</dd></div>
+                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">아침 시간</dt><dd data-summary="detail-breakfast">{% if form_values.get('breakfast_time_start') or form_values.get('breakfast_time_end') %}{{ form_values.get('breakfast_time_start', '-') or '-' }} ~ {{ form_values.get('breakfast_time_end', '-') or '-' }}{% else %}-{% endif %}</dd></div>
+                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">점심 시간</dt><dd data-summary="detail-lunch">{% if form_values.get('lunch_time_start') or form_values.get('lunch_time_end') %}{{ form_values.get('lunch_time_start', '-') or '-' }} ~ {{ form_values.get('lunch_time_end', '-') or '-' }}{% else %}-{% endif %}</dd></div>
+                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">저녁 시간</dt><dd data-summary="detail-dinner">{% if form_values.get('dinner_time_start') or form_values.get('dinner_time_end') %}{{ form_values.get('dinner_time_start', '-') or '-' }} ~ {{ form_values.get('dinner_time_end', '-') or '-' }}{% else %}-{% endif %}</dd></div>
+                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">브레이크 타임</dt><dd data-summary="detail-break">{% if form_values.get('break_time_start') or form_values.get('break_time_end') %}{{ form_values.get('break_time_start', '-') or '-' }} ~ {{ form_values.get('break_time_end', '-') or '-' }}{% else %}없음 또는 미입력{% endif %}</dd></div>
+                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">1인 가격</dt><dd data-summary="detail-price">{% if form_values.get('price') %}{{ form_values.get('price') }}원{% else %}미입력{% endif %}</dd></div>
+                            </dl>
+                        </div>
+                    </div>
+                </details>
+                <div class="flex flex-col-reverse justify-end gap-3 sm:flex-row sm:justify-between">
+                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
+                    <div class="flex flex-col-reverse gap-3 sm:flex-row">
+                        <a class="btn btn-ghost" href="{{ request.url_for('owner_requests_page') }}">취소</a>
+                        <button class="btn btn-primary" type="submit">
+                            <span class="htmx-indicator loading loading-spinner loading-sm"></span>
+                            등록 요청 제출
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</form>
+
+<script>
+const initializeOwnerRequestFlow = (root = document) => {
+    const form = root.querySelector('form[action$="/owner/requests"]');
+    if (!form || form.dataset.flowInitialized === 'true') {
+        return;
+    }
+    form.dataset.flowInitialized = 'true';
+
+    const steps = Array.from(root.querySelectorAll('.question-step'));
+    const progress = document.getElementById('step-progress');
+    const isCampusInput = document.getElementById('is_campus');
+    const typeInput = document.getElementById('establishment_type');
+    const buildingInput = document.getElementById('building');
+    const priceInput = document.getElementById('price');
+    const breakWrap = document.getElementById('break-time-wrap');
+    const priceWrap = document.getElementById('price-wrap');
+    const priceChoiceWrap = document.getElementById('price-choice-wrap');
+    const priceHelp = document.getElementById('price-help');
+    const priceQuestionHelp = document.getElementById('price-question-help');
+    const customBuildingWrap = document.getElementById('custom-building-wrap');
+    const mealTypesChoiceInput = document.getElementById('meal_types_choice');
+    const mealTypeCheckboxes = Array.from(root.querySelectorAll('input[name="meal_types"]'));
+    const mealTimeFields = document.getElementById('meal-time-fields');
+    const mealBlocks = Array.from(root.querySelectorAll('[data-meal-block]'));
+    const openingOnlyButton = document.getElementById('meal-types-opening-only');
+    const nameSummary = document.querySelector('[data-summary="name"]');
+    const typeSummary = document.querySelector('[data-summary="type"]');
+    const detailNameSummary = document.querySelector('[data-summary="detail-name"]');
+    const detailCampusSummary = document.querySelector('[data-summary="detail-campus"]');
+    const detailBuildingSummary = document.querySelector('[data-summary="detail-building"]');
+    const detailNaverSummary = document.querySelector('[data-summary="detail-naver"]');
+    const detailKakaoSummary = document.querySelector('[data-summary="detail-kakao"]');
+    const detailCoordinatesSummary = document.querySelector('[data-summary="detail-coordinates"]');
+    const detailOpeningSummary = document.querySelector('[data-summary="detail-opening"]');
+    const detailBreakfastSummary = document.querySelector('[data-summary="detail-breakfast"]');
+    const detailLunchSummary = document.querySelector('[data-summary="detail-lunch"]');
+    const detailDinnerSummary = document.querySelector('[data-summary="detail-dinner"]');
+    const detailBreakSummary = document.querySelector('[data-summary="detail-break"]');
+    const detailPriceSummary = document.querySelector('[data-summary="detail-price"]');
+
+    let currentIndex = 0;
+
+    const selectedValue = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value || '';
+    const valueOf = (id) => document.getElementById(id)?.value?.trim() || '';
+    const setHidden = (element, hidden) => {
+        if (!element) return;
+        element.classList.toggle('hidden', hidden);
+    };
+    const setText = (element, value) => {
+        if (!element) return;
+        element.textContent = value;
+    };
+    const formatRange = (startId, endId, emptyText = '-') => {
+        const start = valueOf(startId);
+        const end = valueOf(endId);
+        if (!start && !end) return emptyText;
+        return `${start || '-'} ~ ${end || '-'}`;
+    };
+
+    const visibleSteps = () => {
+        const campus = selectedValue('campus_choice');
+        const menuChanges = selectedValue('menu_changes');
+        const fixedMenu = selectedValue('has_fixed_menu_board');
+        const type = typeInput?.value || '';
+        const mealTypesChoice = mealTypesChoiceInput?.value || '';
+
+        const ordered = ['name', 'campus'];
+        if (campus === 'campus') {
+            ordered.push('campus-location');
+        } else if (campus === 'offcampus') {
+            ordered.push('offcampus-location');
+        }
+        ordered.push('menu-change');
+        if (menuChanges === 'no') {
+            ordered.push('menu-board');
+        }
+        ordered.push('opening-time');
+        if (type === 'variable_korean_buffet') {
+            ordered.push('meal-times');
+        } else {
+            ordered.push('breaktime');
+        }
+        ordered.push('price', 'submit');
+        return ordered;
+    };
+
+    const labelForType = (type) => {
+        const map = {
+            fixed_menu_restaurant: '고정메뉴 일반식당',
+            fixed_korean_buffet: '고정메뉴형 한식뷔페',
+            variable_korean_buffet: '메뉴 변경형 한식뷔페',
+        };
+        return map[type] || '-';
+    };
+
+    const syncHiddenFields = () => {
+        const campus = selectedValue('campus_choice');
+        const menuChanges = selectedValue('menu_changes');
+        const fixedMenu = selectedValue('has_fixed_menu_board');
+        const buildingChoice = selectedValue('building_choice');
+        const hasFixedPrice = selectedValue('has_fixed_price');
+        const hasBreak = selectedValue('has_break_time');
+        const selectedMeals = mealTypeCheckboxes.filter((input) => input.checked).map((input) => input.value);
+
+        if (isCampusInput) {
+            isCampusInput.value = campus === 'campus' ? 'true' : '';
+        }
+
+        if (buildingInput && buildingChoice && buildingChoice !== 'custom') {
+            buildingInput.value = buildingChoice;
+        }
+        setHidden(customBuildingWrap, buildingChoice !== 'custom');
+
+        if (typeInput) {
+            if (menuChanges === 'yes') {
+                typeInput.value = 'variable_korean_buffet';
+            } else if (menuChanges === 'no' && fixedMenu === 'yes') {
+                typeInput.value = 'fixed_menu_restaurant';
+            } else if (menuChanges === 'no' && fixedMenu === 'no') {
+                typeInput.value = 'fixed_korean_buffet';
+            } else {
+                typeInput.value = '';
+            }
+        }
+
+        const type = typeInput?.value || '';
+        setHidden(breakWrap, hasBreak !== 'yes');
+        setHidden(priceChoiceWrap, type === 'fixed_korean_buffet' || type === 'variable_korean_buffet');
+        setHidden(priceWrap, !((type === 'fixed_korean_buffet' || type === 'variable_korean_buffet') || hasFixedPrice === 'yes'));
+        setHidden(mealTimeFields, mealTypesChoiceInput?.value !== 'custom');
+        mealBlocks.forEach((block) => {
+            const meal = block.getAttribute('data-meal-block');
+            const visible = meal === 'breakfast' ? selectedMeals.includes('breakfast') : meal === 'lunch' ? selectedMeals.includes('lunch') : meal === 'dinner' ? selectedMeals.includes('dinner') : false;
+            setHidden(block, !visible);
+        });
+
+        if (priceInput) {
+            priceInput.required = type === 'fixed_korean_buffet' || type === 'variable_korean_buffet' || hasFixedPrice === 'yes';
+        }
+        if (priceHelp) {
+            priceHelp.textContent = (type === 'fixed_korean_buffet' || type === 'variable_korean_buffet')
+                ? '현재 선택한 운영 방식에서는 1인 가격 입력이 필요합니다.'
+                : '정해진 가격이 있을 때만 입력하세요.';
+        }
+        if (priceQuestionHelp) {
+            priceQuestionHelp.textContent = (type === 'fixed_korean_buffet' || type === 'variable_korean_buffet')
+                ? '현재 선택한 운영 방식에서는 1인 가격을 꼭 입력해주세요.'
+                : '정해진 1인 가격이 없다면 입력하지 않아도 됩니다.';
+        }
+        if (nameSummary) {
+            nameSummary.textContent = valueOf('name') || '-';
+        }
+        if (typeSummary) {
+            typeSummary.textContent = labelForType(type);
+        }
+        setText(detailNameSummary, valueOf('name') || '-');
+        setText(detailCampusSummary, campus === 'campus' ? '교내' : campus === 'offcampus' ? '교외' : '-');
+        setText(detailBuildingSummary, valueOf('building') || '-');
+        setText(detailNaverSummary, valueOf('naver_map_link') || '-');
+        setText(detailKakaoSummary, valueOf('kakao_map_link') || '-');
+        setText(detailCoordinatesSummary, valueOf('latitude') || valueOf('longitude') ? `${valueOf('latitude') || '-'} / ${valueOf('longitude') || '-'}` : '-');
+        setText(detailOpeningSummary, formatRange('opening_time_start', 'opening_time_end'));
+        setText(detailBreakfastSummary, formatRange('breakfast_time_start', 'breakfast_time_end'));
+        setText(detailLunchSummary, formatRange('lunch_time_start', 'lunch_time_end'));
+        setText(detailDinnerSummary, formatRange('dinner_time_start', 'dinner_time_end'));
+        setText(detailBreakSummary, (selectedValue('has_break_time') === 'no' && !valueOf('break_time_start') && !valueOf('break_time_end')) ? '없음' : formatRange('break_time_start', 'break_time_end', '미입력'));
+        setText(detailPriceSummary, valueOf('price') ? `${valueOf('price')}원` : '미입력');
+    };
+
+    const isStepComplete = (step) => {
+        const campus = selectedValue('campus_choice');
+        const menuChanges = selectedValue('menu_changes');
+        const fixedMenu = selectedValue('has_fixed_menu_board');
+        const type = typeInput?.value || '';
+        const hasBreak = selectedValue('has_break_time');
+        const hasFixedPrice = selectedValue('has_fixed_price');
+        const mealTypesChoice = mealTypesChoiceInput?.value || '';
+        const selectedMeals = mealTypeCheckboxes.filter((input) => input.checked).map((input) => input.value);
+
+        switch (step) {
+            case 'name':
+                return valueOf('name') !== '';
+            case 'campus':
+                return campus !== '';
+            case 'campus-location':
+                if (campus !== 'campus') return true;
+                return selectedValue('building_choice') !== '' && (selectedValue('building_choice') !== 'custom' || valueOf('building') !== '');
+            case 'offcampus-location':
+                if (campus !== 'offcampus') return true;
+                return valueOf('naver_map_link') !== '' || valueOf('kakao_map_link') !== '';
+            case 'menu-change':
+                return menuChanges !== '';
+            case 'menu-board':
+                if (menuChanges !== 'no') return true;
+                return fixedMenu !== '';
+            case 'opening-time':
+                return valueOf('opening_time_start') !== '' && valueOf('opening_time_end') !== '';
+            case 'meal-times':
+                if (type !== 'variable_korean_buffet') return true;
+                if (mealTypesChoice === 'opening_only') return true;
+                if (selectedMeals.length === 0) return false;
+                const pairs = {
+                    breakfast: valueOf('breakfast_time_start') !== '' && valueOf('breakfast_time_end') !== '',
+                    lunch: valueOf('lunch_time_start') !== '' && valueOf('lunch_time_end') !== '',
+                    dinner: valueOf('dinner_time_start') !== '' && valueOf('dinner_time_end') !== '',
+                };
+                return selectedMeals.every((meal) => pairs[meal] ?? true);
+            case 'breaktime':
+                if (type === 'variable_korean_buffet') return true;
+                if (hasBreak === 'no') return true;
+                if (hasBreak === 'yes') return valueOf('break_time_start') !== '' && valueOf('break_time_end') !== '';
+                return false;
+            case 'price':
+                if (type === 'fixed_korean_buffet' || type === 'variable_korean_buffet') return valueOf('price') !== '';
+                if (hasFixedPrice === 'no') return true;
+                if (hasFixedPrice === 'yes') return valueOf('price') !== '';
+                return false;
+            case 'submit':
+                return true;
+            default:
+                return true;
+        }
+    };
+
+    const syncStepView = () => {
+        syncHiddenFields();
+        const order = visibleSteps();
+        if (currentIndex >= order.length) {
+            currentIndex = Math.max(order.length - 1, 0);
+        }
+        if (currentIndex < 0) {
+            currentIndex = 0;
+        }
+        const activeStep = order[currentIndex] || order[0];
+        steps.forEach((step) => {
+            const visible = step.dataset.step === activeStep;
+            step.classList.toggle('hidden', !visible);
+        });
+        const progressIndex = Math.max(order.indexOf(activeStep), 0) + 1;
+        if (progress) {
+            progress.textContent = `질문 ${progressIndex} / ${order.length}`;
+        }
+    };
+
+    const goToNext = () => {
+        const order = visibleSteps();
+        const activeStep = order[currentIndex] || order[0];
+        if (!isStepComplete(activeStep)) return;
+        if (currentIndex < order.length - 1) currentIndex += 1;
+        syncStepView();
+    };
+
+    const goToPrev = () => {
+        if (currentIndex > 0) currentIndex -= 1;
+        syncStepView();
+    };
+
+    root.querySelectorAll('[data-next]').forEach((button) => button.addEventListener('click', goToNext));
+    root.querySelectorAll('[data-prev]').forEach((button) => button.addEventListener('click', goToPrev));
+    root.querySelectorAll('input, select').forEach((input) => {
+        input.addEventListener('change', syncStepView);
+        input.addEventListener('input', syncStepView);
+    });
+    root.querySelectorAll('.ops-choice-card[data-autonext="true"]').forEach((card) => {
+        card.addEventListener('click', () => {
+            const input = card.querySelector('input[type="radio"]');
+            if (!(input instanceof HTMLInputElement)) {
+                return;
+            }
+
+            window.setTimeout(() => {
+                const step = input.closest('.question-step')?.dataset.step || '';
+                const isCustomBuilding = input.name === 'building_choice' && input.value === 'custom';
+                const needsPriceInput = input.name === 'has_fixed_price' && input.value === 'yes';
+                const needsBreakInput = input.name === 'has_break_time' && input.value === 'yes';
+
+                syncStepView();
+
+                if (isCustomBuilding || needsPriceInput || needsBreakInput) {
+                    return;
+                }
+                if (isStepComplete(step)) {
+                    goToNext();
+                }
+            }, 0);
+        });
+    });
+    if (openingOnlyButton && mealTypesChoiceInput) {
+        openingOnlyButton.addEventListener('click', () => {
+            mealTypesChoiceInput.value = 'opening_only';
+            mealTypeCheckboxes.forEach((input) => {
+                input.checked = false;
+            });
+            syncStepView();
+        });
+    }
+    mealTypeCheckboxes.forEach((input) => {
+        input.addEventListener('change', () => {
+            if (mealTypesChoiceInput) {
+                mealTypesChoiceInput.value = 'custom';
+            }
+            syncStepView();
+        });
+    });
+
+    const initialOrder = visibleSteps();
+    const firstIncompleteIndex = initialOrder.findIndex((step) => !isStepComplete(step));
+    currentIndex = firstIncompleteIndex === -1 ? Math.max(initialOrder.length - 1, 0) : firstIncompleteIndex;
+    syncStepView();
+};
+
+initializeOwnerRequestFlow(document);
+document.addEventListener('htmx:load', (event) => {
+    initializeOwnerRequestFlow(event.target instanceof Element ? event.target : document);
+});
+</script>
+{% endblock %}
