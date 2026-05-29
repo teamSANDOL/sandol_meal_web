@@ -1,0 +1,341 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap");
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  background:
+    radial-gradient(circle at top left, rgba(16, 185, 129, 0.14), transparent 32%),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 28%),
+    #f5f7fb;
+}
+
+body {
+  position: relative;
+  font-family: "IBM Plex Sans KR", sans-serif;
+  background: transparent;
+}
+
+.ops-bg-orb {
+  position: fixed;
+  inset: auto;
+  z-index: 0;
+  pointer-events: none;
+  filter: blur(90px);
+  opacity: 0.55;
+}
+
+.ops-bg-orb-primary {
+  top: -4rem;
+  left: -5rem;
+  width: 18rem;
+  height: 18rem;
+  background: rgba(45, 212, 191, 0.38);
+}
+
+.ops-bg-orb-secondary {
+  right: -4rem;
+  top: 12rem;
+  width: 20rem;
+  height: 20rem;
+  background: rgba(96, 165, 250, 0.22);
+}
+
+.navbar,
+.ops-shell {
+  position: relative;
+  z-index: 1;
+}
+
+.ops-shell {
+  margin: 0 auto;
+  max-width: 88rem;
+  padding: 1.25rem 1rem 2.5rem;
+}
+
+.ops-card {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.ops-card .card-body {
+  gap: 1rem;
+}
+
+.ops-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  background: rgba(15, 23, 42, 0.06);
+  color: rgb(71 85 105);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ops-label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: rgb(51 65 85);
+}
+
+.ops-input,
+.ops-select,
+.ops-textarea {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.98);
+  padding: 0.85rem 0.95rem;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.ops-input:focus,
+.ops-select:focus,
+.ops-textarea:focus {
+  outline: none;
+  border-color: rgba(45, 212, 191, 0.7);
+  box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.16);
+}
+
+.ops-detail-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.ops-detail-item {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem;
+  border-radius: 1rem;
+  background: rgba(248, 250, 252, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.ops-detail-item dt {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgb(100 116 139);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ops-detail-item dd {
+  margin: 0;
+  color: rgb(15 23 42);
+  word-break: break-word;
+}
+
+.ops-loading {
+  position: fixed;
+  right: 1rem;
+  top: 5rem;
+  z-index: 50;
+  display: none;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.9);
+  padding: 0.75rem 1rem;
+  color: white;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.24);
+}
+
+.htmx-request#global-loading,
+.htmx-request #global-loading,
+#global-loading.htmx-request {
+  display: inline-flex;
+}
+
+.alert {
+  border-radius: 1rem;
+  border-width: 1px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.table tbody tr:hover {
+  background: rgba(241, 245, 249, 0.82);
+}
+
+.ops-mobile-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.ops-mobile-item {
+  border-radius: 1.25rem;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: rgba(255, 255, 255, 0.94);
+  padding: 1rem;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+.ops-mobile-meta {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.9rem;
+}
+
+.ops-mobile-meta p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgb(71 85 105);
+}
+
+.ops-mobile-meta strong {
+  color: rgb(15 23 42);
+}
+
+.ops-action-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.ops-choice-card {
+  position: relative;
+  display: block;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  background: rgba(255, 255, 255, 0.96);
+  padding: 1.35rem 1.35rem 1.2rem;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.04);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+  cursor: pointer;
+}
+
+.ops-choice-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(45, 212, 191, 0.35);
+  background: rgba(248, 250, 252, 0.98);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+.ops-choice-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ops-choice-card > span {
+  display: block;
+  padding-inline: 0.15rem;
+}
+
+.ops-choice-card:has(input:checked) {
+  border-color: rgba(20, 184, 166, 0.55);
+  background: linear-gradient(180deg, rgba(236, 253, 245, 0.98), rgba(240, 249, 255, 0.98));
+  box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.12), 0 18px 36px rgba(45, 212, 191, 0.14);
+}
+
+.ops-choice-card:has(input:checked) span:first-of-type {
+  color: rgb(15 23 42);
+}
+
+.ops-choice-card:has(input:checked) span:last-of-type {
+  color: rgb(71 85 105);
+}
+
+.ops-review-card,
+.ops-review-details {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+}
+
+.ops-review-card {
+  padding: 1.25rem;
+}
+
+.ops-review-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ops-review-details {
+  padding: 1.25rem;
+}
+
+.ops-review-summary {
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: rgb(15 23 42);
+  list-style: none;
+}
+
+.ops-review-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ops-review-summary::after {
+  content: "＋";
+  float: right;
+  color: rgb(100 116 139);
+}
+
+.ops-review-details[open] .ops-review-summary::after {
+  content: "－";
+}
+
+.ops-review-list div {
+  padding: 0.75rem 0.9rem;
+  border-radius: 1rem;
+  background: rgba(248, 250, 252, 0.92);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+}
+
+.ops-review-list dt {
+  margin-bottom: 0.3rem;
+}
+
+.ops-review-list dd {
+  margin: 0;
+  color: rgb(15 23 42);
+  word-break: break-word;
+}
+
+@media (min-width: 640px) {
+  .ops-shell {
+    padding: 1.5rem 1.25rem 3rem;
+  }
+
+  .ops-review-card,
+  .ops-review-details {
+    padding: 1.5rem;
+  }
+
+  .ops-review-hero {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .ops-detail-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .ops-shell {
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  .ops-action-grid {
+    grid-template-columns: 0.82fr 1.18fr;
+  }
+}

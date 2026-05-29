@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Sandol Meal Web{% endblock %}</title>
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/app.css') }}">
+    <link rel="stylesheet" href="{{ request.url_for('static', path='css/ops-overrides.css') }}">
+    <script src="{{ request.url_for('static', path='js/htmx.min.js') }}" defer></script>
+</head>
+<body data-theme="sandolOps" class="min-h-screen text-slate-900 antialiased">
+    <div class="ops-bg-orb ops-bg-orb-primary"></div>
+    <div class="ops-bg-orb ops-bg-orb-secondary"></div>
+    <div class="navbar sticky top-0 z-30 border-b border-base-300/80 bg-white/90 px-4 shadow-sm backdrop-blur xl:px-8">
+        <div class="navbar-start">
+            <a class="btn btn-ghost text-lg font-black tracking-tight" href="{{ request.url_for('root') }}">
+                <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-neutral text-sm font-black text-white">S</span>
+                <span>Meal Web</span>
+            </a>
+        </div>
+        <nav class="navbar-center hidden gap-2 lg:flex" aria-label="주요 메뉴" hx-boost="true" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-indicator="#global-loading">
+            <a class="btn btn-ghost btn-sm" href="{{ request.url_for('owner_requests_page') }}">식당주</a>
+            <a class="btn btn-ghost btn-sm" href="{{ request.url_for('admin_requests_page') }}">관리자</a>
+        </nav>
+        <div class="navbar-end gap-2">
+            {% if session %}
+            <form method="post" action="{{ request.url_for('logout') }}">
+                <button class="btn btn-outline btn-sm" type="submit">로그아웃</button>
+            </form>
+            {% else %}
+            <a class="btn btn-primary btn-sm" href="{{ request.url_for('login') }}">로그인</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="border-b border-base-300/70 bg-base-100/80 px-4 py-3 backdrop-blur lg:hidden">
+        <nav class="mx-auto flex max-w-7xl gap-2" aria-label="모바일 메뉴" hx-boost="true" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-indicator="#global-loading">
+            <a class="btn btn-sm flex-1 btn-ghost" href="{{ request.url_for('owner_requests_page') }}">식당주</a>
+            <a class="btn btn-sm flex-1 btn-ghost" href="{{ request.url_for('admin_requests_page') }}">관리자</a>
+        </nav>
+    </div>
+    <div id="global-loading" class="ops-loading" aria-hidden="true">
+        <span class="loading loading-spinner loading-sm"></span>
+        <span>불러오는 중...</span>
+    </div>
+    <main id="page-shell" class="ops-shell" hx-boost="true" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-indicator="#global-loading">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

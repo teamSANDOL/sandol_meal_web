@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Sandol Meal Web{% endblock %}
+
+{% block content %}
+<section class="grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-stretch">
+    <div class="ops-card overflow-hidden">
+        <div class="card-body gap-6 p-6 sm:p-8 lg:p-10">
+            <div class="badge badge-primary badge-outline w-fit">Operations Console</div>
+            <div class="space-y-4">
+                <h1 class="max-w-2xl text-4xl font-black tracking-tight text-slate-950 lg:text-5xl">학식 운영 요청을 한 화면에서 정리합니다.</h1>
+                <p class="max-w-xl text-base leading-7 text-slate-600">식당주는 등록 요청을 제출하고 상태를 확인합니다. 관리자는 제출된 요청을 검토해 승인 또는 거부할 수 있습니다.</p>
+            </div>
+            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <a class="btn btn-primary" href="{{ request.url_for('owner_requests_page') }}">식당주 바로가기</a>
+                <a class="btn btn-outline" href="{{ request.url_for('admin_requests_page') }}">관리자 바로가기</a>
+            </div>
+            <div class="grid gap-3 rounded-[1.25rem] border border-white/10 bg-slate-950/95 p-4 font-black shadow-2xl sm:grid-cols-3">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">Flow</p>
+                    <p class="mt-2 text-sm font-semibold font-black">로그인 → 요청 확인 → 처리</p>
+                </div>
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-[0.2em] text-sky-200">Owner</p>
+                    <p class="mt-2 text-sm font-semibold font-black">등록 요청 작성 · 상태 확인</p>
+                </div>
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-[0.2em] text-amber-200">Admin</p>
+                    <p class="mt-2 text-sm font-semibold font-black">검토 · 승인 · 거부</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="grid gap-4">
+        <a class="ops-card transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg" href="{{ request.url_for('owner_requests_page') }}">
+            <div class="card-body">
+                <div class="flex items-center justify-between gap-4">
+                    <h2 class="card-title">식당주 워크스페이스</h2>
+                    <span class="badge badge-primary">Owner</span>
+                </div>
+                <p class="text-sm text-slate-600">새 식당 등록 요청을 작성하고 제출 상태와 검토 결과를 확인합니다.</p>
+                <div class="card-actions justify-end">
+                    <span class="btn btn-ghost btn-sm">바로 이동</span>
+                </div>
+            </div>
+        </a>
+        <a class="ops-card transition hover:-translate-y-0.5 hover:border-secondary/40 hover:shadow-lg" href="{{ request.url_for('admin_requests_page') }}">
+            <div class="card-body">
+                <div class="flex items-center justify-between gap-4">
+                    <h2 class="card-title">관리자 검토 대기열</h2>
+                    <span class="badge badge-secondary">Admin</span>
+                </div>
+                <p class="text-sm text-slate-600">전체 요청 목록을 검토하고 승인 또는 거부 처리를 진행합니다.</p>
+                <div class="card-actions justify-end">
+                    <span class="btn btn-ghost btn-sm">바로 이동</span>
+                </div>
+            </div>
+        </a>
+    </div>
+</section>
+{% endblock %}

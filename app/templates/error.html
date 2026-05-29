@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}오류 - Sandol Meal Web{% endblock %}
+
+{% block content %}
+<section class="mx-auto max-w-2xl">
+    <div class="ops-card overflow-hidden">
+        <div class="card-body gap-6 p-6 sm:p-8 lg:p-10 text-center">
+            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-error/10 text-error text-2xl font-black">
+                {{ error_code }}
+            </div>
+            <div class="space-y-3">
+                <h1 class="text-3xl font-black tracking-tight text-slate-950">{{ error_title }}</h1>
+                <p class="mx-auto max-w-xl text-sm leading-7 text-slate-600">{{ error_message }}</p>
+            </div>
+            <div class="flex flex-col justify-center gap-3 sm:flex-row">
+                <a class="btn btn-primary" href="{{ request.url_for('root') }}">홈으로 돌아가기</a>
+                {% if not session %}
+                <a class="btn btn-outline" href="{{ request.url_for('login') }}">로그인하러 가기</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
