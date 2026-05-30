@@ -117,7 +117,7 @@
                 <div>
                     <p class="ops-section-title">Q3</p>
                     <h3 class="mt-3 text-2xl font-black tracking-tight">가게 위치를 알려주세요.</h3>
-                    <p class="mt-2 text-sm text-slate-600">네이버 지도 링크나 카카오 지도 링크 중 하나 이상 입력해주세요.</p>
+                    <p class="mt-2 text-sm text-slate-600">지도 링크가 있다면 입력해주세요. 없어도 다음 단계로 넘어갈 수 있어요.</p>
                 </div>
                 <div class="grid gap-4 md:grid-cols-2">
                     <div>
@@ -622,7 +622,7 @@ const initializeOwnerRequestFlow = (root = document) => {
                 return selectedValue('building_choice') !== '' && (selectedValue('building_choice') !== 'custom' || valueOf('building') !== '');
             case 'offcampus-location':
                 if (campus !== 'offcampus') return true;
-                return valueOf('naver_map_link') !== '' || valueOf('kakao_map_link') !== '';
+                return true;
             case 'menu-change':
                 return menuChanges !== '';
             case 'menu-board':
