@@ -33,8 +33,8 @@ class LocationPayload(TypedDict, total=False):
     longitude: float | None
 
 
-class RestaurantRequestPayload(TypedDict, total=False):
-    """Meal-service RestaurantRequest JSON payload."""
+class RestaurantPayload(TypedDict, total=False):
+    """Meal-service restaurant JSON payload."""
 
     name: str
     establishment_type: EstablishmentType
@@ -46,6 +46,17 @@ class RestaurantRequestPayload(TypedDict, total=False):
     brunch_time: TimeRangePayload | None
     lunch_time: TimeRangePayload | None
     dinner_time: TimeRangePayload | None
+    owner_user_id: str
+
+
+class RestaurantRequestPayload(RestaurantPayload):
+    """Meal-service RestaurantRequest JSON payload."""
+
+
+class RestaurantCreatePayload(RestaurantPayload, total=False):
+    """Meal-service direct restaurant create JSON payload."""
+
+    owner_user_id: str
 
 
 class MealServiceError(Exception):
@@ -131,6 +142,13 @@ def build_restaurant_request_payload(
     form_data: Mapping[str, Any],
 ) -> RestaurantRequestPayload:
     """Map owner create form values to meal-service RestaurantRequest JSON."""
+    return cast(RestaurantRequestPayload, build_restaurant_payload(form_data))
+
+
+def build_restaurant_payload(
+    form_data: Mapping[str, Any],
+) -> RestaurantPayload:
+    """Map form values to a generic meal-service restaurant JSON payload."""
     name = _blank_to_none(form_data.get("name"))
     establishment_type = _blank_to_none(form_data.get("establishment_type"))
     opening_time = _time_range(
@@ -200,6 +218,24 @@ def build_restaurant_request_payload(
             form_data.get("dinner_time_start"), form_data.get("dinner_time_end")
         ),
     }
+
+
+def build_admin_restaurant_create_payload(
+    form_data: Mapping[str, Any],
+) -> RestaurantCreatePayload:
+    """Map admin create form values to meal-service direct create payload."""
+    owner_user_id = _blank_to_none(form_data.get("owner_user_id"))
+    if owner_user_id is None:
+        raise MealServiceError(
+            Config.HttpStatus.BAD_REQUEST,
+            "소유자 Keycloak 사용자 ID(owner_user_id)는 필수입니다.",
+        )
+
+    payload: RestaurantCreatePayload = {
+        **build_restaurant_payload(form_data),
+        "owner_user_id": owner_user_id,
+    }
+    return payload
 
 
 class MealServiceClient:
@@ -273,6 +309,98 @@ class MealServiceClient:
         return await self.create_request(
             user_id=user_id,
             payload=build_restaurant_request_payload(form_data),
+        )
+
+    async def list_restaurants(
+        self,
+        *,
+        user_id: str,
+        page: int | None = None,
+        size: int | None = None,
+    ) -> dict[str, Any]:
+        """List registered restaurants visible to the current admin workflow."""
+        params = self._pagination_params(page=page, size=size)
+        return await self._request_json(
+            "GET",
+            "/restaurants/",
+            user_id=user_id,
+            params=params,
+        )
+
+    async def get_restaurant_detail(
+        self,
+        *,
+        user_id: str,
+        restaurant_id: int,
+    ) -> dict[str, Any]:
+        """Return a single registered restaurant."""
+        return await self._request_json(
+            "GET",
+            f"/restaurants/{restaurant_id}",
+            user_id=user_id,
+        )
+
+    async def create_restaurant(
+        self,
+        *,
+        user_id: str,
+        payload: RestaurantCreatePayload,
+    ) -> dict[str, Any]:
+        """Create a registered restaurant directly as an admin."""
+        return await self._request_json(
+            "POST",
+            "/restaurants/",
+            user_id=user_id,
+            json=payload,
+        )
+
+    async def create_restaurant_from_form(
+        self,
+        *,
+        user_id: str,
+        form_data: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Map admin form values and create a registered restaurant."""
+        return await self.create_restaurant(
+            user_id=user_id,
+            payload=build_admin_restaurant_create_payload(form_data),
+        )
+
+    async def update_restaurant(
+        self,
+        *,
+        user_id: str,
+        restaurant_id: int,
+        payload: RestaurantPayload,
+    ) -> dict[str, Any]:
+        """Update a registered restaurant as an admin."""
+        return await self._request_json(
+            "PATCH",
+            f"/restaurants/{restaurant_id}",
+            user_id=user_id,
+            json=payload,
+        )
+
+    async def update_restaurant_from_form(
+        self,
+        *,
+        user_id: str,
+        restaurant_id: int,
+        form_data: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Map admin edit form values and update a registered restaurant."""
+        return await self.update_restaurant(
+            user_id=user_id,
+            restaurant_id=restaurant_id,
+            payload=build_restaurant_payload(form_data),
+        )
+
+    async def delete_restaurant(self, *, user_id: str, restaurant_id: int) -> None:
+        """Delete a registered restaurant."""
+        await self._request_empty(
+            "DELETE",
+            f"/restaurants/{restaurant_id}",
+            user_id=user_id,
         )
 
     async def delete_request(self, *, user_id: str, request_id: int) -> None:
