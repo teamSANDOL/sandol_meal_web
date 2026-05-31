@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Meals - Sandol Meal Web{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+        <p class="ops-section-title">Admin</p>
+        <h1 class="mt-2 text-3xl font-black tracking-tight">전체 식단 기록 관리</h1>
+        <p class="mt-2 text-sm text-slate-600">저장된 모든 식단 기록을 확인하고 수정 화면으로 이동할 수 있습니다.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a class="btn btn-primary" href="{{ request.url_for('admin_new_meal_page') }}">새 식단 등록</a>
+        <a class="btn btn-outline" href="{{ request.url_for('admin_restaurants_page') }}">등록 식당 관리</a>
+    </div>
+</div>
+
+{% if success_message %}
+<div class="alert alert-success mb-4"><span>완료: {{ success_message }}</span></div>
+{% endif %}
+
+{% if error_message %}
+<div class="alert alert-error mb-4"><span>오류: {{ error_message }}</span></div>
+{% endif %}
+
+{% if meals %}
+<div class="ops-card">
+    <div class="ops-mobile-list p-4 md:hidden">
+        {% for meal in meals %}
+        <article class="ops-mobile-item">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Meal #{{ meal.get("id", "") }}</p>
+                    <h2 class="mt-2 text-lg font-bold text-slate-950">{{ meal.get("restaurant_name", "") }}</h2>
+                </div>
+                <span class="badge badge-outline">{{ meal.get("meal_type", "") }}</span>
+            </div>
+            <div class="ops-mobile-meta">
+                <p><strong>등록 시각</strong><br>{{ meal.get("registered_at", "") }}</p>
+                <p><strong>수정 시각</strong><br>{{ meal.get("updated_at", "") }}</p>
+                <p><strong>메뉴</strong><br>{{ meal.get("menu", [])|join(', ') }}</p>
+            </div>
+            <div class="mt-4 flex gap-2">
+                <a class="btn btn-sm btn-ghost flex-1" href="{{ request.url_for('admin_edit_meal_page', meal_id=meal.get('id')) }}">수정</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    <div class="overflow-x-auto">
+        <table class="table table-zebra hidden md:table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>식당명</th>
+                    <th>식사 유형</th>
+                    <th>메뉴</th>
+                    <th>등록 시각</th>
+                    <th>수정 시각</th>
+                    <th class="text-right">작업</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for meal in meals %}
+                <tr>
+                    <td class="font-mono text-xs text-slate-500">{{ meal.get("id", "") }}</td>
+                    <td class="font-semibold">{{ meal.get("restaurant_name", "") }}</td>
+                    <td>{{ meal.get("meal_type", "") }}</td>
+                    <td class="text-sm text-slate-600">{{ meal.get("menu", [])|join(', ') }}</td>
+                    <td class="text-sm text-slate-600">{{ meal.get("registered_at", "") }}</td>
+                    <td class="text-sm text-slate-600">{{ meal.get("updated_at", "") }}</td>
+                    <td class="text-right">
+                        <a class="btn btn-ghost btn-sm" href="{{ request.url_for('admin_edit_meal_page', meal_id=meal.get('id')) }}">수정</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% set current_page = pagination_meta.get('page', 1) %}
+{% set has_prev = pagination_meta.get('has_prev', false) %}
+{% set has_next = pagination_meta.get('has_next', false) %}
+<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+    <p class="text-sm text-slate-500">페이지 {{ current_page }} · 총 {{ pagination_meta.get('total', meals|length) }}건</p>
+    <div class="flex gap-2">
+        {% if has_prev %}
+        <a class="btn btn-sm btn-ghost" href="{{ request.url_for('admin_meals_page') }}?page={{ current_page - 1 }}">이전</a>
+        {% endif %}
+        {% if has_next %}
+        <a class="btn btn-sm btn-ghost" href="{{ request.url_for('admin_meals_page') }}?page={{ current_page + 1 }}">다음</a>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="ops-card">
+    <div class="card-body items-center py-14 text-center">
+        <div class="badge badge-ghost">Empty</div>
+        <h2 class="card-title mt-2">등록된 식단 기록이 없습니다.</h2>
+        <p class="text-sm text-slate-600">새 식단을 등록하면 이 목록에 표시됩니다.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

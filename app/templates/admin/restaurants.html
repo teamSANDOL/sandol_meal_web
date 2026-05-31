@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Restaurants - Sandol Meal Web{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+        <p class="ops-section-title">Admin</p>
+        <h1 class="mt-2 text-3xl font-black tracking-tight">등록된 식당 관리</h1>
+        <p class="mt-2 text-sm text-slate-600">현재 등록된 식당 목록을 확인하고 수정 화면으로 이동할 수 있습니다.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a class="btn btn-primary" href="{{ request.url_for('admin_new_restaurant_page') }}">새 식당 직접 생성</a>
+        <a class="btn btn-outline" href="{{ request.url_for('admin_requests_page') }}">등록 요청 검토</a>
+    </div>
+</div>
+
+{% if success_message %}
+<div class="alert alert-success mb-4"><span>완료: {{ success_message }}</span></div>
+{% endif %}
+
+{% if error_message %}
+<div class="alert alert-error mb-4"><span>오류: {{ error_message }}</span></div>
+{% endif %}
+
+{% if restaurants %}
+<div class="ops-card">
+    <div class="ops-mobile-list p-4 md:hidden">
+        {% for restaurant in restaurants %}
+        {% set location = restaurant.get('location', {}) %}
+        <article class="ops-mobile-item">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Restaurant #{{ restaurant.get("id", "") }}</p>
+                    <h2 class="mt-2 text-lg font-bold text-slate-950">{{ restaurant.get("name", "") }}</h2>
+                </div>
+                <span class="badge badge-outline">{{ restaurant.get("establishment_type", "") }}</span>
+            </div>
+            <div class="ops-mobile-meta">
+                <p><strong>Owner(Keycloak ID)</strong><br>{{ restaurant.get("owner_user_id", "-") }}</p>
+                <p><strong>가격</strong><br>{% if restaurant.get("price") %}{{ restaurant.get("price") }}원{% else %}-{% endif %}</p>
+                <p><strong>위치</strong><br>{% if location.get("is_campus") %}교내{% else %}교외{% endif %} {% if location.get("building") %}· {{ location.get("building") }}{% endif %}</p>
+            </div>
+            <div class="mt-4 flex gap-2">
+                <a class="btn btn-sm btn-ghost flex-1" href="{{ request.url_for('admin_edit_restaurant_page', restaurant_id=restaurant.get('id')) }}">수정</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    <div class="overflow-x-auto">
+        <table class="table table-zebra hidden md:table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>식당명</th>
+                    <th>Owner(Keycloak ID)</th>
+                    <th>유형</th>
+                    <th>가격</th>
+                    <th>위치</th>
+                    <th class="text-right">작업</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for restaurant in restaurants %}
+                {% set location = restaurant.get('location', {}) %}
+                <tr>
+                    <td class="font-mono text-xs text-slate-500">{{ restaurant.get("id", "") }}</td>
+                    <td class="font-semibold">{{ restaurant.get("name", "") }}</td>
+                    <td>{{ restaurant.get("owner_user_id", "-") }}</td>
+                    <td>{{ restaurant.get("establishment_type", "") }}</td>
+                    <td>{% if restaurant.get("price") %}{{ restaurant.get("price") }}원{% else %}-{% endif %}</td>
+                    <td>{% if location.get("is_campus") %}교내{% else %}교외{% endif %}{% if location.get("building") %} · {{ location.get("building") }}{% endif %}</td>
+                    <td class="text-right">
+                        <a class="btn btn-ghost btn-sm" href="{{ request.url_for('admin_edit_restaurant_page', restaurant_id=restaurant.get('id')) }}">수정</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="ops-card">
+    <div class="card-body items-center py-14 text-center">
+        <div class="badge badge-ghost">Empty</div>
+        <h2 class="card-title mt-2">등록된 식당이 없습니다.</h2>
+        <p class="text-sm text-slate-600">직접 식당을 생성하거나, 등록 요청을 승인하면 목록에 표시됩니다.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Meal Form - Sandol Meal Web{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+        <p class="ops-section-title">Admin</p>
+        <h1 class="mt-2 text-3xl font-black tracking-tight">{{ page_title }}</h1>
+        <p class="mt-2 text-sm text-slate-600">{{ page_description }}</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a class="btn btn-outline" href="{{ request.url_for('admin_meals_page') }}">전체 식단 기록</a>
+        <a class="btn btn-ghost" href="{{ back_url }}">목록으로</a>
+    </div>
+</div>
+
+{% if success_message %}
+<div class="alert alert-success mb-4"><span>완료: {{ success_message }}</span></div>
+{% endif %}
+
+{% if error_message %}
+<div class="alert alert-error mb-4"><span>오류: {{ error_message }}</span></div>
+{% endif %}
+
+<form class="grid gap-6" method="post" action="{{ action_url }}" hx-post="{{ action_url }}" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-disabled-elt="find button[type='submit']" hx-indicator="#global-loading">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <section class="ops-card">
+        <div class="card-body gap-6">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 class="card-title">기본 정보</h2>
+                {% if meal_id %}
+                <span class="badge badge-outline">Meal #{{ meal_id }}</span>
+                {% endif %}
+            </div>
+            <div class="grid gap-4 md:grid-cols-2">
+                <div class="form-control gap-2 md:col-span-2">
+                    <label class="ops-label" for="restaurant_id">식당</label>
+                    <select class="ops-select" id="restaurant_id" name="restaurant_id" required>
+                        <option value="">선택</option>
+                        {% for restaurant in restaurant_options %}
+                        <option value="{{ restaurant.id }}" {% if form_values.get('restaurant_id') == restaurant.id %}selected{% endif %}>{{ restaurant.name }} (ID {{ restaurant.id }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-control gap-2">
+                    <label class="ops-label" for="meal_type">식사 유형</label>
+                    <select class="ops-select" id="meal_type" name="meal_type" required>
+                        <option value="">선택</option>
+                        {% for value, label in meal_type_options %}
+                        <option value="{{ value }}" {% if form_values.get('meal_type') == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if meal %}
+                <div class="alert md:col-span-2">
+                    <span>등록 시각: {{ meal.get('registered_at', '-') }} / 마지막 수정: {{ meal.get('updated_at', '-') }}</span>
+                </div>
+                {% endif %}
+                <div class="form-control gap-2 md:col-span-2">
+                    <label class="ops-label" for="menu">메뉴</label>
+                    <textarea class="ops-textarea" id="menu" name="menu" rows="10" required>{{ form_values.get('menu', '') }}</textarea>
+                    <p class="text-xs text-slate-500">한 줄에 하나씩 입력하세요.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="ops-card">
+        <div class="card-body gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="card-title">저장</h2>
+                <p class="text-sm text-slate-600">식당, 식사 유형, 메뉴 전체를 기준으로 식단 기록을 저장합니다.</p>
+            </div>
+            <button class="btn btn-primary" type="submit">
+                <span class="htmx-indicator loading loading-spinner loading-sm"></span>
+                {{ submit_label }}
+            </button>
+        </div>
+    </section>
+</form>
+{% endblock %}
