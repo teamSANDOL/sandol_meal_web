@@ -33,6 +33,12 @@ TIME_OPTIONS: tuple[str, ...] = tuple(
     for hour in range(24)
     for minute in (0, 30)
 )
+MEAL_TYPE_OPTIONS: tuple[tuple[str, str], ...] = (
+    ("breakfast", "아침"),
+    ("brunch", "브런치"),
+    ("lunch", "점심"),
+    ("dinner", "저녁"),
+)
 
 
 def _response_data(data: dict[str, Any]) -> dict[str, Any]:
@@ -41,6 +47,18 @@ def _response_data(data: dict[str, Any]) -> dict[str, Any]:
     if isinstance(nested_data, dict):
         return nested_data
     return data
+
+
+def _response_meta(data: dict[str, Any]) -> dict[str, Any]:
+    """Extract response meta information when present."""
+    meta = data.get("meta")
+    if isinstance(meta, dict):
+        return meta
+    response_data = _response_data(data)
+    nested_meta = response_data.get("meta") if isinstance(response_data, dict) else None
+    if isinstance(nested_meta, dict):
+        return nested_meta
+    return {}
 
 
 def _request_items(data: dict[str, Any]) -> list[dict[str, Any]]:
@@ -137,6 +155,62 @@ def _restaurant_form_values(restaurant: dict[str, Any] | None) -> dict[str, str]
     return form_values
 
 
+def _meal_form_values(meal: dict[str, Any] | None) -> dict[str, str]:
+    """Flatten meal API data into form field values."""
+    if meal is None:
+        return {}
+
+    menu_value = meal.get("menu")
+    menu_lines = ""
+    if isinstance(menu_value, list):
+        menu_lines = "\n".join(str(item) for item in menu_value)
+
+    return {
+        "restaurant_id": _string_form_value(meal.get("restaurant_id")),
+        "meal_type": _string_form_value(meal.get("meal_type")),
+        "menu": menu_lines,
+    }
+
+
+def _restaurant_options(restaurants: list[dict[str, Any]]) -> list[dict[str, str]]:
+    """Build select options for restaurant dropdowns."""
+    options: list[dict[str, str]] = []
+    for restaurant in restaurants:
+        restaurant_id = restaurant.get("id")
+        if isinstance(restaurant_id, int):
+            options.append(
+                {
+                    "id": str(restaurant_id),
+                    "name": _string_form_value(restaurant.get("name")),
+                }
+            )
+    return options
+
+
+async def _load_restaurant_options(session: SessionData) -> list[dict[str, str]]:
+    """Load restaurant select options across paginated responses."""
+    page = 1
+    size = 100
+    options: list[dict[str, str]] = []
+
+    while True:
+        restaurant_data = await meal_service_client.list_restaurants(
+            user_id=session["user_id"],
+            page=page,
+            size=size,
+        )
+        restaurant_items = _request_items(restaurant_data)
+        options.extend(_restaurant_options(restaurant_items))
+
+        meta = _response_meta(restaurant_data)
+        has_next = meta.get("has_next")
+        if has_next is not True:
+            break
+        page += 1
+
+    return options
+
+
 def _template_context(
     request: Request,
     session: SessionData,
@@ -202,6 +276,44 @@ def _render_restaurant_form(
         establishment_type_options=ESTABLISHMENT_TYPE_OPTIONS,
         building_options=BUILDING_OPTIONS,
         time_options=TIME_OPTIONS,
+        error_message=error_message,
+        success_message=success_message,
+    )
+
+
+def _render_meal_form(
+    request: Request,
+    session: SessionData,
+    *,
+    meal: dict[str, Any] | None,
+    form_values: dict[str, Any],
+    restaurant_options: list[dict[str, str]],
+    page_title: str,
+    page_description: str,
+    submit_label: str,
+    action_url: str,
+    back_url: str,
+    meal_id: int | None = None,
+    status_code: int = Config.HttpStatus.OK,
+    error_message: str | None = None,
+    success_message: str | None = None,
+) -> HTMLResponse:
+    """Render the shared meal admin form."""
+    return _render(
+        request,
+        session,
+        "admin/meal_form.html",
+        status_code=status_code,
+        meal=meal,
+        meal_id=meal_id,
+        form_values=form_values,
+        restaurant_options=restaurant_options,
+        meal_type_options=MEAL_TYPE_OPTIONS,
+        page_title=page_title,
+        page_description=page_description,
+        submit_label=submit_label,
+        action_url=action_url,
+        back_url=back_url,
         error_message=error_message,
         success_message=success_message,
     )
@@ -302,6 +414,217 @@ async def admin_restaurants_page(
         restaurants=restaurants,
         error_message=error_message,
         success_message=message,
+    )
+
+
+@router.get("/meals", response_class=HTMLResponse, name="admin_meals_page")
+async def admin_meals_page(
+    request: Request,
+    message: str | None = None,
+    page: int = 1,
+) -> Response:
+    """Render all meal records for admin management."""
+    session_or_redirect = _get_admin_page_session(request)
+    if isinstance(session_or_redirect, RedirectResponse):
+        return session_or_redirect
+
+    session = session_or_redirect
+    error_message = None
+    meals: list[dict[str, Any]] = []
+    pagination_meta: dict[str, Any] = {}
+    try:
+        data = await meal_service_client.list_meals(
+            user_id=session["user_id"],
+            page=page,
+            size=100,
+        )
+        meals = _request_items(data)
+        pagination_meta = _response_meta(data)
+    except MealServiceError as exc:
+        error_message = exc.message
+
+    return _render(
+        request,
+        session,
+        "admin/meals.html",
+        meals=meals,
+        pagination_meta=pagination_meta,
+        error_message=error_message,
+        success_message=message,
+    )
+
+
+@router.get("/meals/new", response_class=HTMLResponse, name="admin_new_meal_page")
+async def admin_new_meal_page(request: Request) -> Response:
+    """Render the admin form for creating a meal record."""
+    session_or_redirect = _get_admin_page_session(request)
+    if isinstance(session_or_redirect, RedirectResponse):
+        return session_or_redirect
+
+    session = session_or_redirect
+    restaurant_options: list[dict[str, str]] = []
+    error_message = None
+    try:
+        restaurant_options = await _load_restaurant_options(session)
+    except MealServiceError as exc:
+        error_message = exc.message
+
+    return _render_meal_form(
+        request,
+        session,
+        meal=None,
+        form_values={},
+        restaurant_options=restaurant_options,
+        page_title="관리자 식단 등록",
+        page_description="기존 식당을 선택해 새로운 식단 기록을 등록합니다.",
+        submit_label="식단 등록",
+        action_url=str(request.url_for("create_admin_meal")),
+        back_url=str(request.url_for("admin_meals_page")),
+        error_message=error_message,
+    )
+
+
+@router.post("/meals", response_class=HTMLResponse, name="create_admin_meal")
+async def create_admin_meal(request: Request) -> Response:
+    """Create a meal from the admin form."""
+    session, form_values = await _require_admin_post_session(request)
+    restaurant_options: list[dict[str, str]] = []
+    try:
+        restaurant_options = await _load_restaurant_options(session)
+        data = await meal_service_client.create_meal_from_form(
+            user_id=session["user_id"],
+            form_data=form_values,
+        )
+        meal = _response_data(data)
+        meal_id = meal.get("id")
+        if not isinstance(meal_id, int):
+            raise MealServiceError(
+                Config.HttpStatus.INTERNAL_SERVER_ERROR,
+                "생성된 식단 정보를 확인할 수 없습니다.",
+            )
+    except MealServiceError as exc:
+        return _render_meal_form(
+            request,
+            session,
+            meal=None,
+            form_values=form_values,
+            restaurant_options=restaurant_options,
+            page_title="관리자 식단 등록",
+            page_description="기존 식당을 선택해 새로운 식단 기록을 등록합니다.",
+            submit_label="식단 등록",
+            action_url=str(request.url_for("create_admin_meal")),
+            back_url=str(request.url_for("admin_meals_page")),
+            status_code=exc.status_code,
+            error_message=exc.message,
+        )
+
+    return RedirectResponse(
+        _url_with_message(
+            request,
+            "admin_edit_meal_page",
+            "식단을 등록했습니다.",
+            meal_id=meal_id,
+        ),
+        status_code=Config.HttpStatus.FOUND,
+    )
+
+
+@router.get(
+    "/meals/{meal_id}/edit",
+    response_class=HTMLResponse,
+    name="admin_edit_meal_page",
+)
+async def admin_edit_meal_page(
+    request: Request,
+    meal_id: int,
+    message: str | None = None,
+) -> Response:
+    """Render the admin form for editing a meal record."""
+    session_or_redirect = _get_admin_page_session(request)
+    if isinstance(session_or_redirect, RedirectResponse):
+        return session_or_redirect
+
+    session = session_or_redirect
+    error_message = None
+    meal: dict[str, Any] | None = None
+    form_values: dict[str, Any] = {}
+    restaurant_options: list[dict[str, str]] = []
+    try:
+        restaurant_options = await _load_restaurant_options(session)
+        data = await meal_service_client.get_meal_detail(
+            user_id=session["user_id"],
+            meal_id=meal_id,
+        )
+        meal = _response_data(data)
+        form_values = _meal_form_values(meal)
+    except MealServiceError as exc:
+        error_message = exc.message
+
+    return _render_meal_form(
+        request,
+        session,
+        meal=meal,
+        meal_id=meal_id,
+        form_values=form_values,
+        restaurant_options=restaurant_options,
+        page_title="관리자 식단 수정",
+        page_description="저장된 식단 기록을 수정합니다.",
+        submit_label="식단 저장",
+        action_url=str(request.url_for("update_admin_meal", meal_id=meal_id)),
+        back_url=str(request.url_for("admin_meals_page")),
+        error_message=error_message,
+        success_message=message,
+    )
+
+
+@router.post(
+    "/meals/{meal_id}/edit",
+    response_class=HTMLResponse,
+    name="update_admin_meal",
+)
+async def update_admin_meal(request: Request, meal_id: int) -> Response:
+    """Update a meal from the admin form."""
+    session, form_values = await _require_admin_post_session(request)
+    restaurant_options: list[dict[str, str]] = []
+    try:
+        restaurant_options = await _load_restaurant_options(session)
+        data = await meal_service_client.update_meal_from_form(
+            user_id=session["user_id"],
+            meal_id=meal_id,
+            form_data=form_values,
+        )
+        meal = _response_data(data)
+        rendered_form_values = _meal_form_values(meal)
+    except MealServiceError as exc:
+        return _render_meal_form(
+            request,
+            session,
+            meal=None,
+            meal_id=meal_id,
+            form_values=form_values,
+            restaurant_options=restaurant_options,
+            page_title="관리자 식단 수정",
+            page_description="저장된 식단 기록을 수정합니다.",
+            submit_label="식단 저장",
+            action_url=str(request.url_for("update_admin_meal", meal_id=meal_id)),
+            back_url=str(request.url_for("admin_meals_page")),
+            status_code=exc.status_code,
+            error_message=exc.message,
+        )
+
+    return _render_meal_form(
+        request,
+        session,
+        meal=meal,
+        meal_id=meal_id,
+        form_values=rendered_form_values,
+        restaurant_options=restaurant_options,
+        page_title="관리자 식단 수정",
+        page_description="저장된 식단 기록을 수정합니다.",
+        submit_label="식단 저장",
+        action_url=str(request.url_for("update_admin_meal", meal_id=meal_id)),
+        back_url=str(request.url_for("admin_meals_page")),
+        success_message="식단 정보를 저장했습니다.",
     )
 
 
