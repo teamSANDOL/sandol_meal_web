@@ -59,6 +59,14 @@ class RestaurantCreatePayload(RestaurantPayload, total=False):
     owner_user_id: str
 
 
+class MealPayload(TypedDict):
+    """Meal-service meal JSON payload."""
+
+    restaurant_id: int
+    meal_type: Literal["breakfast", "brunch", "lunch", "dinner"]
+    menu: list[str]
+
+
 class MealServiceError(Exception):
     """Controlled local exception for meal-service failures."""
 
@@ -238,6 +246,54 @@ def build_admin_restaurant_create_payload(
     return payload
 
 
+def _required_int(value: Any, *, field_label: str) -> int:
+    """Convert a required form value to int."""
+    normalized = _blank_to_none(value)
+    if normalized is None:
+        raise MealServiceError(
+            Config.HttpStatus.BAD_REQUEST,
+            f"{field_label}는 필수입니다.",
+        )
+    try:
+        return int(normalized)
+    except ValueError as exc:
+        raise MealServiceError(
+            Config.HttpStatus.BAD_REQUEST,
+            f"{field_label} 값을 확인해주세요.",
+        ) from exc
+
+
+def build_meal_payload(form_data: Mapping[str, Any]) -> MealPayload:
+    """Map form values to a meal-service meal payload."""
+    restaurant_id = _required_int(form_data.get("restaurant_id"), field_label="식당")
+    meal_type = _blank_to_none(form_data.get("meal_type"))
+    if meal_type not in {"breakfast", "brunch", "lunch", "dinner"}:
+        raise MealServiceError(
+            Config.HttpStatus.BAD_REQUEST,
+            "식사 유형 값이 올바르지 않습니다.",
+        )
+
+    raw_menu = _blank_to_none(form_data.get("menu"))
+    if raw_menu is None:
+        raise MealServiceError(
+            Config.HttpStatus.BAD_REQUEST,
+            "메뉴는 한 줄에 하나씩 입력해주세요.",
+        )
+
+    menu = [line.strip() for line in raw_menu.splitlines() if line.strip()]
+    if not menu:
+        raise MealServiceError(
+            Config.HttpStatus.BAD_REQUEST,
+            "메뉴는 한 줄에 하나씩 입력해주세요.",
+        )
+
+    return {
+        "restaurant_id": restaurant_id,
+        "meal_type": cast(Literal["breakfast", "brunch", "lunch", "dinner"], meal_type),
+        "menu": menu,
+    }
+
+
 class MealServiceClient:
     """Typed async client for meal-service restaurant request workflows."""
 
@@ -401,6 +457,95 @@ class MealServiceClient:
             "DELETE",
             f"/restaurants/{restaurant_id}",
             user_id=user_id,
+        )
+
+    async def list_meals(
+        self,
+        *,
+        user_id: str,
+        page: int | None = None,
+        size: int | None = None,
+    ) -> dict[str, Any]:
+        """List meal records visible to the admin workflow."""
+        params = self._pagination_params(page=page, size=size)
+        return await self._request_json(
+            "GET",
+            "/meals",
+            user_id=user_id,
+            params=params,
+        )
+
+    async def get_meal_detail(
+        self,
+        *,
+        user_id: str,
+        meal_id: int,
+    ) -> dict[str, Any]:
+        """Return a single meal record."""
+        return await self._request_json(
+            "GET",
+            f"/meals/{meal_id}",
+            user_id=user_id,
+        )
+
+    async def create_meal(
+        self,
+        *,
+        user_id: str,
+        payload: MealPayload,
+    ) -> dict[str, Any]:
+        """Create a meal record."""
+        restaurant_id = payload["restaurant_id"]
+        create_payload = {
+            "meal_type": payload["meal_type"],
+            "menu": payload["menu"],
+        }
+        return await self._request_json(
+            "POST",
+            f"/meals/{restaurant_id}",
+            user_id=user_id,
+            json=create_payload,
+        )
+
+    async def create_meal_from_form(
+        self,
+        *,
+        user_id: str,
+        form_data: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Map admin form values and create a meal."""
+        return await self.create_meal(
+            user_id=user_id,
+            payload=build_meal_payload(form_data),
+        )
+
+    async def update_meal(
+        self,
+        *,
+        user_id: str,
+        meal_id: int,
+        payload: MealPayload,
+    ) -> dict[str, Any]:
+        """Update a meal record."""
+        return await self._request_json(
+            "PATCH",
+            f"/meals/{meal_id}",
+            user_id=user_id,
+            json=payload,
+        )
+
+    async def update_meal_from_form(
+        self,
+        *,
+        user_id: str,
+        meal_id: int,
+        form_data: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Map admin form values and update a meal."""
+        return await self.update_meal(
+            user_id=user_id,
+            meal_id=meal_id,
+            payload=build_meal_payload(form_data),
         )
 
     async def delete_request(self, *, user_id: str, request_id: int) -> None:
