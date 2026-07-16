@@ -9,7 +9,10 @@
         <h1 class="mt-2 text-3xl font-black tracking-tight">식당 등록 요청 목록</h1>
         <p class="mt-2 text-sm text-slate-600">제출한 요청의 진행 상태와 검토 결과를 확인합니다.</p>
     </div>
-    <a class="btn btn-primary" href="{{ request.url_for('new_owner_request_page') }}">새 식당 등록 요청</a>
+    <div class="flex flex-wrap gap-2">
+        <a class="btn btn-outline" href="{{ request.url_for('owner_restaurants_page') }}">내 식당 관리</a>
+        <a class="btn btn-primary" href="{{ request.url_for('new_owner_request_page') }}">새 식당 등록 요청</a>
+    </div>
 </div>
 
 {% if success_message %}

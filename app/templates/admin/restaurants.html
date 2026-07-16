@@ -43,6 +43,8 @@
             </div>
             <div class="mt-4 flex gap-2">
                 <a class="btn btn-sm btn-ghost flex-1" href="{{ request.url_for('admin_edit_restaurant_page', restaurant_id=restaurant.get('id')) }}">수정</a>
+                <a class="btn btn-sm btn-outline flex-1" href="{{ request.url_for('admin_restaurant_managers_page', restaurant_id=restaurant.get('id')) }}">Manager</a>
+                <a class="btn btn-sm btn-outline flex-1" href="{{ request.url_for('admin_restaurant_manager_requests_page', restaurant_id=restaurant.get('id')) }}">신청</a>
             </div>
         </article>
         {% endfor %}
@@ -72,6 +74,8 @@
                     <td>{% if location.get("is_campus") %}교내{% else %}교외{% endif %}{% if location.get("building") %} · {{ location.get("building") }}{% endif %}</td>
                     <td class="text-right">
                         <a class="btn btn-ghost btn-sm" href="{{ request.url_for('admin_edit_restaurant_page', restaurant_id=restaurant.get('id')) }}">수정</a>
+                        <a class="btn btn-outline btn-sm" href="{{ request.url_for('admin_restaurant_managers_page', restaurant_id=restaurant.get('id')) }}">Manager</a>
+                        <a class="btn btn-outline btn-sm" href="{{ request.url_for('admin_restaurant_manager_requests_page', restaurant_id=restaurant.get('id')) }}">신청</a>
                     </td>
                 </tr>
                 {% endfor %}
