@@ -46,7 +46,6 @@ class RestaurantPayload(TypedDict, total=False):
     brunch_time: TimeRangePayload | None
     lunch_time: TimeRangePayload | None
     dinner_time: TimeRangePayload | None
-    owner_user_id: str
 
 
 class RestaurantRequestPayload(RestaurantPayload):
@@ -57,6 +56,12 @@ class RestaurantCreatePayload(RestaurantPayload, total=False):
     """Meal-service direct restaurant create JSON payload."""
 
     owner_user_id: str
+
+
+class RestaurantManagerPayload(TypedDict):
+    """Meal-service restaurant manager JSON payload."""
+
+    user_id: str
 
 
 class MealPayload(TypedDict):
@@ -246,6 +251,19 @@ def build_admin_restaurant_create_payload(
     return payload
 
 
+def build_restaurant_manager_payload(
+    form_data: Mapping[str, Any],
+) -> RestaurantManagerPayload:
+    """Map admin manager form values to meal-service payload."""
+    manager_user_id = _blank_to_none(form_data.get("manager_user_id"))
+    if manager_user_id is None:
+        raise MealServiceError(
+            Config.HttpStatus.BAD_REQUEST,
+            "Manager Keycloak 사용자 ID는 필수입니다.",
+        )
+    return {"user_id": manager_user_id}
+
+
 def _required_int(value: Any, *, field_label: str) -> int:
     """Convert a required form value to int."""
     normalized = _blank_to_none(value)
@@ -373,9 +391,17 @@ class MealServiceClient:
         user_id: str,
         page: int | None = None,
         size: int | None = None,
+        owner_user_id: str | None = None,
+        manager_user_id: str | None = None,
     ) -> dict[str, Any]:
         """List registered restaurants visible to the current admin workflow."""
         params = self._pagination_params(page=page, size=size)
+        if owner_user_id is not None:
+            params = params or {}
+            params["owner_user_id"] = owner_user_id
+        if manager_user_id is not None:
+            params = params or {}
+            params["manager_user_id"] = manager_user_id
         return await self._request_json(
             "GET",
             "/restaurants/",
@@ -449,6 +475,97 @@ class MealServiceClient:
             user_id=user_id,
             restaurant_id=restaurant_id,
             payload=build_restaurant_payload(form_data),
+        )
+
+    async def list_restaurant_managers(
+        self,
+        *,
+        user_id: str,
+        restaurant_id: int,
+    ) -> dict[str, Any]:
+        """List managers registered to a restaurant."""
+        return await self._request_json(
+            "GET",
+            f"/restaurants/{restaurant_id}/managers",
+            user_id=user_id,
+        )
+
+    async def list_restaurant_manager_requests(
+        self,
+        *,
+        user_id: str,
+        restaurant_id: int,
+        status: str = "pending",
+    ) -> dict[str, Any]:
+        """List manager registration requests for a restaurant."""
+        return await self._request_json(
+            "GET",
+            f"/restaurants/{restaurant_id}/manager-requests",
+            user_id=user_id,
+            params={"status": status},
+        )
+
+    async def approve_restaurant_manager_request(
+        self,
+        *,
+        user_id: str,
+        restaurant_id: int,
+        request_id: int,
+    ) -> dict[str, Any]:
+        """Approve a manager registration request for a restaurant."""
+        return await self._request_json(
+            "POST",
+            f"/restaurants/{restaurant_id}/manager-requests/{request_id}/approval",
+            user_id=user_id,
+        )
+
+    async def add_restaurant_manager(
+        self,
+        *,
+        user_id: str,
+        restaurant_id: int,
+        payload: RestaurantManagerPayload,
+    ) -> dict[str, Any]:
+        """Register a manager to a restaurant as an admin."""
+        return await self._request_json(
+            "POST",
+            f"/restaurants/{restaurant_id}/managers",
+            user_id=user_id,
+            json=payload,
+        )
+
+    async def add_restaurant_manager_from_form(
+        self,
+        *,
+        user_id: str,
+        restaurant_id: int,
+        form_data: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Map admin form values and register a restaurant manager."""
+        return await self.add_restaurant_manager(
+            user_id=user_id,
+            restaurant_id=restaurant_id,
+            payload=build_restaurant_manager_payload(form_data),
+        )
+
+    async def remove_restaurant_manager(
+        self,
+        *,
+        user_id: str,
+        restaurant_id: int,
+        manager_user_id: str,
+    ) -> None:
+        """Remove a manager from a restaurant as an admin."""
+        normalized_manager_user_id = manager_user_id.strip()
+        if not normalized_manager_user_id:
+            raise MealServiceError(
+                Config.HttpStatus.BAD_REQUEST,
+                "Manager Keycloak 사용자 ID는 필수입니다.",
+            )
+        await self._request_empty(
+            "DELETE",
+            f"/restaurants/{restaurant_id}/managers/{normalized_manager_user_id}",
+            user_id=user_id,
         )
 
     async def delete_restaurant(self, *, user_id: str, restaurant_id: int) -> None:
@@ -587,9 +704,9 @@ class MealServiceClient:
 
     def _pagination_params(
         self, *, page: int | None, size: int | None
-    ) -> dict[str, int] | None:
+    ) -> dict[str, int | str] | None:
         """Build optional fastapi-pagination query parameters."""
-        params: dict[str, int] = {}
+        params: dict[str, int | str] = {}
         if page is not None:
             params["page"] = page
         if size is not None:
