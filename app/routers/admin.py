@@ -323,11 +323,12 @@ def _url_with_message(
     request: Request,
     route_name: str,
     message: str,
+    query_name: str = "message",
     **path_params: Any,
 ) -> str:
     """Build a root-path-aware URL with a plain status message."""
     url = str(request.url_for(route_name, **path_params))
-    return f"{url}?{urlencode({'message': message})}"
+    return f"{url}?{urlencode({query_name: message})}"
 
 
 def _get_admin_page_session(request: Request) -> SessionData | RedirectResponse:
@@ -708,6 +709,7 @@ async def admin_edit_restaurant_page(
     request: Request,
     restaurant_id: int,
     message: str | None = None,
+    error: str | None = None,
 ) -> Response:
     """Render the admin form for editing a registered restaurant."""
     session_or_redirect = _get_admin_page_session(request)
@@ -715,7 +717,7 @@ async def admin_edit_restaurant_page(
         return session_or_redirect
 
     session = session_or_redirect
-    error_message = None
+    error_message = error
     restaurant: dict[str, Any] | None = None
     form_values: dict[str, Any] = {}
     try:
@@ -726,7 +728,8 @@ async def admin_edit_restaurant_page(
         restaurant = _response_data(data)
         form_values = _restaurant_form_values(restaurant)
     except MealServiceError as exc:
-        error_message = exc.message
+        if error_message is None:
+            error_message = exc.message
 
     return _render_restaurant_form(
         request,
@@ -804,7 +807,18 @@ async def update_admin_restaurant(request: Request, restaurant_id: int) -> Respo
 )
 async def delete_admin_restaurant(request: Request, restaurant_id: int) -> Response:
     """Delete a registered restaurant from the admin workflow."""
-    session, _ = await _require_admin_post_session(request)
+    session, form_values = await _require_admin_post_session(request)
+    if form_values.get("confirm_delete") != "true":
+        return RedirectResponse(
+            _url_with_message(
+                request,
+                "admin_edit_restaurant_page",
+                "삭제 확인을 선택해주세요.",
+                query_name="error",
+                restaurant_id=restaurant_id,
+            ),
+            status_code=Config.HttpStatus.FOUND,
+        )
     try:
         await meal_service_client.delete_restaurant(
             user_id=session["user_id"],
@@ -816,6 +830,7 @@ async def delete_admin_restaurant(request: Request, restaurant_id: int) -> Respo
                 request,
                 "admin_edit_restaurant_page",
                 exc.message,
+                query_name="error",
                 restaurant_id=restaurant_id,
             ),
             status_code=Config.HttpStatus.FOUND,

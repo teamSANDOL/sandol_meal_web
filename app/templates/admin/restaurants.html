@@ -7,7 +7,7 @@
     <div>
         <p class="ops-section-title">Admin</p>
         <h1 class="mt-2 text-3xl font-black tracking-tight">등록된 식당 관리</h1>
-        <p class="mt-2 text-sm text-slate-600">현재 등록된 식당 목록을 확인하고 수정 화면으로 이동할 수 있습니다.</p>
+        <p class="mt-2 text-sm text-slate-600">현재 등록된 식당 목록을 확인하고 수정·삭제할 수 있습니다.</p>
     </div>
     <div class="flex flex-wrap gap-2">
         <a class="btn btn-primary" href="{{ request.url_for('admin_new_restaurant_page') }}">새 식당 직접 생성</a>
@@ -42,7 +42,7 @@
                 <p><strong>위치</strong><br>{% if location.get("is_campus") %}교내{% else %}교외{% endif %} {% if location.get("building") %}· {{ location.get("building") }}{% endif %}</p>
             </div>
             <div class="mt-4 flex gap-2">
-                <a class="btn btn-sm btn-ghost flex-1" href="{{ request.url_for('admin_edit_restaurant_page', restaurant_id=restaurant.get('id')) }}">수정</a>
+                <a class="btn btn-sm btn-ghost flex-1" href="{{ request.url_for('admin_edit_restaurant_page', restaurant_id=restaurant.get('id')) }}">관리</a>
             </div>
         </article>
         {% endfor %}
@@ -71,7 +71,7 @@
                     <td>{% if restaurant.get("price") %}{{ restaurant.get("price") }}원{% else %}-{% endif %}</td>
                     <td>{% if location.get("is_campus") %}교내{% else %}교외{% endif %}{% if location.get("building") %} · {{ location.get("building") }}{% endif %}</td>
                     <td class="text-right">
-                        <a class="btn btn-ghost btn-sm" href="{{ request.url_for('admin_edit_restaurant_page', restaurant_id=restaurant.get('id')) }}">수정</a>
+                        <a class="btn btn-ghost btn-sm" href="{{ request.url_for('admin_edit_restaurant_page', restaurant_id=restaurant.get('id')) }}">관리</a>
                     </td>
                 </tr>
                 {% endfor %}

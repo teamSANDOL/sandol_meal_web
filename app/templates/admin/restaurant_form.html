@@ -35,19 +35,11 @@
                 {% endif %}
             </div>
             <div class="grid gap-4 md:grid-cols-2">
-                {% if not restaurant_id %}
                 <div class="form-control gap-2 md:col-span-2">
                     <label class="ops-label" for="owner_user_id">소유자 Keycloak 사용자 ID (owner_user_id)</label>
                     <input class="ops-input" id="owner_user_id" name="owner_user_id" type="text" value="{{ form_values.get('owner_user_id', '') }}" placeholder="예: 123e4567-e89b-12d3-a456-426614174000" required>
-                    <p class="text-xs text-slate-500">meal-service가 이 값을 기준으로 실제 소유자 계정을 조회하거나 생성합니다.</p>
+                    <p class="text-xs text-slate-500">관리자만 직접 변경할 수 있습니다. 일반 사용자의 소유권 이전은 이전 신청과 신규 소유자의 승인을 거치는 별도 절차가 필요합니다.</p>
                 </div>
-                {% else %}
-                <div class="form-control gap-2 md:col-span-2">
-                    <label class="ops-label" for="owner_user_id">소유자 Keycloak 사용자 ID (owner_user_id)</label>
-                    <input class="ops-input" id="owner_user_id" name="owner_user_id" type="text" value="{{ form_values.get('owner_user_id', '') }}" placeholder="예: 123e4567-e89b-12d3-a456-426614174000">
-                    <p class="text-xs text-slate-500">비워두면 기존 소유자를 유지합니다. 입력하면 해당 Keycloak 사용자로 owner를 변경합니다.</p>
-                </div>
-                {% endif %}
                 <div class="form-control gap-2">
                     <label class="ops-label" for="name">식당명</label>
                     <input class="ops-input" id="name" name="name" type="text" value="{{ form_values.get('name', '') }}" required>
@@ -163,4 +155,26 @@
         </div>
     </section>
 </form>
+
+{% if restaurant_id %}
+<section class="ops-card mt-6 border-error/30">
+    <div class="card-body gap-4">
+        <div>
+            <h2 class="card-title text-error">식당 삭제</h2>
+            <p class="mt-2 text-sm text-slate-600">이 식당과 연결된 운영 시간 정보가 함께 삭제됩니다. 삭제한 식당은 복구할 수 없습니다.</p>
+        </div>
+        <form class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" method="post" action="{{ request.url_for('delete_admin_restaurant', restaurant_id=restaurant_id) }}" hx-post="{{ request.url_for('delete_admin_restaurant', restaurant_id=restaurant_id) }}" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-disabled-elt="find button[type='submit']" hx-indicator="#global-loading">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label class="label cursor-pointer justify-start gap-3">
+                <input class="checkbox checkbox-error" name="confirm_delete" type="checkbox" value="true" required>
+                <span class="label-text">‘{{ form_values.get('name', '이 식당') }}’ 삭제를 확인합니다.</span>
+            </label>
+            <button class="btn btn-error" type="submit">
+                <span class="htmx-indicator loading loading-spinner loading-sm"></span>
+                식당 삭제
+            </button>
+        </form>
+    </div>
+</section>
+{% endif %}
 {% endblock %}

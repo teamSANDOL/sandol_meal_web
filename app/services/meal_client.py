@@ -246,6 +246,23 @@ def build_admin_restaurant_create_payload(
     return payload
 
 
+def build_admin_restaurant_update_payload(
+    form_data: Mapping[str, Any],
+) -> RestaurantPayload:
+    """Map all editable admin form fields to a restaurant update payload."""
+    owner_user_id = _blank_to_none(form_data.get("owner_user_id"))
+    if owner_user_id is None:
+        raise MealServiceError(
+            Config.HttpStatus.BAD_REQUEST,
+            "소유자 Keycloak 사용자 ID(owner_user_id)는 필수입니다.",
+        )
+
+    return {
+        **build_restaurant_payload(form_data),
+        "owner_user_id": owner_user_id,
+    }
+
+
 def _required_int(value: Any, *, field_label: str) -> int:
     """Convert a required form value to int."""
     normalized = _blank_to_none(value)
@@ -448,7 +465,7 @@ class MealServiceClient:
         return await self.update_restaurant(
             user_id=user_id,
             restaurant_id=restaurant_id,
-            payload=build_restaurant_payload(form_data),
+            payload=build_admin_restaurant_update_payload(form_data),
         )
 
     async def delete_restaurant(self, *, user_id: str, restaurant_id: int) -> None:
