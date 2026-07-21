@@ -12,10 +12,17 @@
                 <p class="max-w-xl text-base leading-7 text-slate-600">식당주는 등록 요청을 제출하고 상태를 확인합니다. 관리자는 제출된 요청을 검토하고 등록 식당과 식단 기록까지 함께 관리할 수 있습니다.</p>
             </div>
             <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <a class="btn btn-primary" href="{{ request.url_for('owner_requests_page') }}">식당주 바로가기</a>
-                <a class="btn btn-outline" href="{{ request.url_for('admin_requests_page') }}">관리자 바로가기</a>
+                {% if not session %}
+                <a class="btn btn-primary" href="{{ request.url_for('login') }}">로그인하고 시작하기</a>
+                {% elif is_admin %}
+                <a class="btn btn-primary" href="{{ request.url_for('admin_requests_page') }}">등록 요청 검토</a>
                 <a class="btn btn-outline" href="{{ request.url_for('admin_restaurants_page') }}">등록 식당 관리</a>
-                <a class="btn btn-ghost" href="{{ request.url_for('admin_meals_page') }}">식단 관리 바로가기</a>
+                <a class="btn btn-ghost" href="{{ request.url_for('admin_meals_page') }}">식단 관리</a>
+                {% else %}
+                <a class="btn btn-primary" href="{{ request.url_for('owner_requests_page') }}">내 등록 요청 보기</a>
+                <a class="btn btn-outline" href="{{ request.url_for('owner_restaurants_page') }}">내 식당 관리</a>
+                <a class="btn btn-outline" href="{{ request.url_for('new_owner_request_page') }}">새 식당 등록 요청</a>
+                {% endif %}
             </div>
             <div class="grid gap-3 rounded-[1.25rem] border border-white/10 bg-slate-950/95 p-4 font-black shadow-2xl sm:grid-cols-3">
                 <div>
@@ -34,6 +41,7 @@
         </div>
     </div>
     <div class="grid gap-4">
+        {% if session and not is_admin %}
         <a class="ops-card transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg" href="{{ request.url_for('owner_requests_page') }}">
             <div class="card-body">
                 <div class="flex items-center justify-between gap-4">
@@ -46,6 +54,17 @@
                 </div>
             </div>
         </a>
+        <a class="ops-card transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg" href="{{ request.url_for('owner_restaurants_page') }}">
+            <div class="card-body">
+                <div class="flex items-center justify-between gap-4">
+                    <h2 class="card-title">내 식당 관리</h2>
+                    <span class="badge badge-primary">Managers</span>
+                </div>
+                <p class="text-sm text-slate-600">소유 식당을 확인하고 대기 중인 매니저 신청을 승인합니다.</p>
+                <div class="card-actions justify-end"><span class="btn btn-ghost btn-sm">바로 이동</span></div>
+            </div>
+        </a>
+        {% elif session and is_admin %}
         <a class="ops-card transition hover:-translate-y-0.5 hover:border-secondary/40 hover:shadow-lg" href="{{ request.url_for('admin_requests_page') }}">
             <div class="card-body">
                 <div class="flex items-center justify-between gap-4">
@@ -82,6 +101,20 @@
                 </div>
             </div>
         </a>
+        {% else %}
+        <div class="ops-card">
+            <div class="card-body">
+                <div class="flex items-center justify-between gap-4">
+                    <h2 class="card-title">로그인이 필요합니다</h2>
+                    <span class="badge badge-primary">Sign in</span>
+                </div>
+                <p class="text-sm text-slate-600">로그인하면 계정 권한에 맞는 식당주 또는 관리자 작업 화면만 표시됩니다.</p>
+                <div class="card-actions justify-end">
+                    <a class="btn btn-primary btn-sm" href="{{ request.url_for('login') }}">로그인</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </section>
 {% endblock %}

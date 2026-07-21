@@ -14,7 +14,7 @@ SERVICE_DIR = CONFIG_DIR.parent.parent
 TEMPLATE_DIR = SERVICE_DIR / "app" / "templates"
 STATIC_DIR = SERVICE_DIR / "app" / "static"
 TMP_DIR = SERVICE_DIR / "tmp"
-_ = TMP_DIR.mkdir(exist_ok=True)
+TMP_DIR.mkdir(exist_ok=True)
 
 logger = logging.getLogger("sandol_meal_web")
 logger.setLevel(logging.DEBUG)

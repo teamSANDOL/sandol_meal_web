@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import Config, logger
 from app.routers import admin_router, auth_router, owner_router
-from app.services.session_service import get_optional_session
+from app.services.session_service import get_optional_session, navigation_context
 
 app = FastAPI(root_path="/meal-web")
 templates = Jinja2Templates(directory=str(Config.TEMPLATE_DIR))
@@ -53,15 +53,17 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         if detail == "invalid_csrf_token":
             title = "요청을 다시 시도해주세요"
             message = "보안 검증에 실패했습니다. 페이지를 새로고침한 뒤 다시 시도해주세요."
+        session = get_optional_session(request)
         return templates.TemplateResponse(
             request,
             "error.html",
             {
                 "request": request,
-                "session": get_optional_session(request),
+                "session": session,
                 "error_code": exc.status_code,
                 "error_title": title,
                 "error_message": message,
+                **navigation_context(request, session),
             },
             status_code=exc.status_code,
         )
@@ -77,7 +79,11 @@ async def root(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "root.html",
-        {"request": request, "session": session},
+        {
+            "request": request,
+            "session": session,
+            **navigation_context(request, session),
+        },
     )
 
 

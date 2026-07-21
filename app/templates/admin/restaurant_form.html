@@ -5,14 +5,11 @@
 {% block content %}
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-        <p class="ops-section-title">Admin</p>
+        <p class="ops-section-title">관리자 · 등록 식당</p>
         <h1 class="mt-2 text-3xl font-black tracking-tight">{{ page_title }}</h1>
         <p class="mt-2 text-sm text-slate-600">{{ page_description }}</p>
     </div>
-    <div class="flex flex-wrap gap-2">
-        <a class="btn btn-outline" href="{{ request.url_for('admin_requests_page') }}">등록 요청 검토</a>
-        <a class="btn btn-ghost" href="{{ back_url }}">목록으로</a>
-    </div>
+    <a class="btn btn-ghost" href="{{ back_url }}">등록 식당 목록으로</a>
 </div>
 
 {% if success_message %}

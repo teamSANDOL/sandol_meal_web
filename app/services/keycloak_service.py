@@ -12,6 +12,8 @@ from keycloak import KeycloakOpenID
 
 from app.config import Config
 
+JWT_PART_COUNT = 3
+
 
 def build_keycloak_client() -> KeycloakOpenID:
     """Create a KeycloakOpenID client from environment configuration."""
@@ -103,7 +105,7 @@ def build_logout_url(*, id_token_hint: str | None) -> str:
 def decode_token_claims(token: str) -> dict[str, Any]:
     """Decode JWT claims without exposing or logging the token value."""
     parts = token.split(".")
-    if len(parts) != 3:
+    if len(parts) != JWT_PART_COUNT:
         raise ValueError("invalid_token_format")
     payload = parts[1]
     padding = "=" * (-len(payload) % 4)

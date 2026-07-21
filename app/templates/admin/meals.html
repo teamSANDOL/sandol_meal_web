@@ -5,14 +5,51 @@
 {% block content %}
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-        <p class="ops-section-title">Admin</p>
-        <h1 class="mt-2 text-3xl font-black tracking-tight">전체 식단 기록 관리</h1>
-        <p class="mt-2 text-sm text-slate-600">저장된 모든 식단 기록을 확인하고 수정 화면으로 이동할 수 있습니다.</p>
+        <p class="ops-section-title">관리자</p>
+        <h1 class="mt-2 text-3xl font-black tracking-tight">식단 관리</h1>
+        <p class="mt-2 text-sm text-slate-600">최신 수정순으로 식단을 확인하고 식당과 최종 수정 날짜로 필터링합니다.</p>
     </div>
     <div class="flex flex-wrap gap-2">
         <a class="btn btn-primary" href="{{ request.url_for('admin_new_meal_page') }}">새 식단 등록</a>
     </div>
 </div>
+
+<form class="ops-card mb-6" method="get" action="{{ request.url_for('admin_meals_page') }}">
+    <div class="card-body gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h2 class="card-title">목록 필터</h2>
+                <p class="mt-1 text-sm text-slate-600">조건을 조합해 원하는 식단 기록만 조회할 수 있습니다.</p>
+            </div>
+            <span class="badge badge-outline">최신 수정순</span>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2">
+            <div class="form-control gap-2 md:col-span-2">
+                <label class="ops-label" for="restaurant_id">식당</label>
+                <select class="ops-select" id="restaurant_id" name="restaurant_id">
+                    <option value="">전체 식당</option>
+                    {% for restaurant in restaurant_options %}
+                    <option value="{{ restaurant.get('id', '') }}" {% if selected_restaurant_id == restaurant.get('id', '') %}selected{% endif %}>{{ restaurant.get('name', '') }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-control gap-2">
+                <label class="ops-label" for="start_date">수정 시작일</label>
+                <input class="ops-input" id="start_date" name="start_date" type="date" value="{{ start_date }}">
+            </div>
+            <div class="form-control gap-2">
+                <label class="ops-label" for="end_date">수정 종료일</label>
+                <input class="ops-input" id="end_date" name="end_date" type="date" value="{{ end_date }}">
+            </div>
+        </div>
+        <div class="flex flex-wrap justify-end gap-2">
+            {% if has_filters %}
+            <a class="btn btn-ghost" href="{{ request.url_for('admin_meals_page') }}">필터 초기화</a>
+            {% endif %}
+            <button class="btn btn-primary" type="submit">필터 적용</button>
+        </div>
+    </div>
+</form>
 
 {% if success_message %}
 <div class="alert alert-success mb-4"><span>완료: {{ success_message }}</span></div>
@@ -76,26 +113,35 @@
         </table>
     </div>
 </div>
-{% set current_page = pagination_meta.get('page', 1) %}
-{% set has_prev = pagination_meta.get('has_prev', false) %}
-{% set has_next = pagination_meta.get('has_next', false) %}
 <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-    <p class="text-sm text-slate-500">페이지 {{ current_page }} · 총 {{ pagination_meta.get('total', meals|length) }}건</p>
-    <div class="flex gap-2">
-        {% if has_prev %}
-        <a class="btn btn-sm btn-ghost" href="{{ request.url_for('admin_meals_page') }}?page={{ current_page - 1 }}">이전</a>
+    <p class="text-sm text-slate-500">총 {{ pagination.get('total', meals|length) }}건 · {{ pagination.get('current_page', 1) }} / {{ pagination.get('total_pages', 1) }} 페이지</p>
+    <nav class="flex flex-wrap gap-2" aria-label="식단 목록 페이지">
+        {% if pagination.get('first_url') %}
+        <a class="btn btn-sm btn-ghost" href="{{ pagination.get('first_url') }}">처음</a>
         {% endif %}
-        {% if has_next %}
-        <a class="btn btn-sm btn-ghost" href="{{ request.url_for('admin_meals_page') }}?page={{ current_page + 1 }}">다음</a>
+        {% if pagination.get('prev_url') %}
+        <a class="btn btn-sm btn-outline" href="{{ pagination.get('prev_url') }}">이전</a>
         {% endif %}
-    </div>
+        <span class="btn btn-sm btn-primary" aria-current="page">{{ pagination.get('current_page', 1) }}</span>
+        {% if pagination.get('next_url') %}
+        <a class="btn btn-sm btn-outline" href="{{ pagination.get('next_url') }}">다음</a>
+        {% endif %}
+        {% if pagination.get('last_url') %}
+        <a class="btn btn-sm btn-ghost" href="{{ pagination.get('last_url') }}">마지막</a>
+        {% endif %}
+    </nav>
 </div>
 {% else %}
 <div class="ops-card">
     <div class="card-body items-center py-14 text-center">
-        <div class="badge badge-ghost">Empty</div>
-        <h2 class="card-title mt-2">등록된 식단 기록이 없습니다.</h2>
-        <p class="text-sm text-slate-600">새 식단을 등록하면 이 목록에 표시됩니다.</p>
+        <div class="badge badge-ghost">{% if has_filters %}검색 결과 없음{% else %}등록 전{% endif %}</div>
+        <h2 class="card-title mt-2">{% if has_filters %}조건에 맞는 식단이 없습니다.{% else %}등록된 식단 기록이 없습니다.{% endif %}</h2>
+        <p class="text-sm text-slate-600">{% if has_filters %}필터 조건을 변경하거나 초기화해보세요.{% else %}새 식단을 등록하면 이 목록에 표시됩니다.{% endif %}</p>
+        {% if has_filters %}
+        <a class="btn btn-outline mt-2" href="{{ request.url_for('admin_meals_page') }}">필터 초기화</a>
+        {% else %}
+        <a class="btn btn-primary mt-2" href="{{ request.url_for('admin_new_meal_page') }}">새 식단 등록</a>
+        {% endif %}
     </div>
 </div>
 {% endif %}

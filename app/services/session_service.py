@@ -181,6 +181,19 @@ def has_admin_role(session: SessionData) -> bool:
     )
 
 
+def navigation_context(
+    request: Request,
+    session: SessionData | None,
+) -> dict[str, bool | str]:
+    """Build role and current-page values shared by navigation templates."""
+    route = request.scope.get("route")
+    route_name = getattr(route, "name", "")
+    return {
+        "is_admin": session is not None and has_admin_role(session),
+        "current_route": route_name if isinstance(route_name, str) else "",
+    }
+
+
 def require_admin_session(request: Request) -> SessionData:
     """Require an authenticated session with a configured admin role."""
     session = require_session(request)

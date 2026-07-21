@@ -76,3 +76,7 @@ indent-style = "space"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[[tool.mypy.overrides]]
+module = ["diskcache"]
+ignore_missing_imports = true

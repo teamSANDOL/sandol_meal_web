@@ -14,6 +14,8 @@ from app.services.session_service import (
     SessionData,
     csrf_token_for_template,
     get_optional_session,
+    has_admin_role,
+    navigation_context,
 )
 
 router = APIRouter(prefix="/owner", tags=["Owner"])
@@ -52,6 +54,7 @@ def _template_context(
         "request": request,
         "session": session,
         "csrf_token": csrf_token_for_template(session),
+        **navigation_context(request, session),
     }
     context.update(extra)
     return context
@@ -88,11 +91,12 @@ def _url_with_message(
     request: Request,
     route_name: str,
     message: str,
+    query_name: str = "message",
     **path_params: Any,
 ) -> str:
-    """Build a root-path-aware URL with a plain success message."""
+    """Build a root-path-aware URL with a plain status message."""
     url = str(request.url_for(route_name, **path_params))
-    return f"{url}?{urlencode({'message': message})}"
+    return f"{url}?{urlencode({query_name: message})}"
 
 
 async def _require_owner_post_session(request: Request) -> tuple[SessionData, dict[str, Any]]:
@@ -107,6 +111,128 @@ async def _require_owner_post_session(request: Request) -> tuple[SessionData, di
     ):
         raise HTTPException(Config.HttpStatus.FORBIDDEN, "invalid_csrf_token")
     return session, dict(form)
+
+
+@router.get("/restaurants", response_class=HTMLResponse, name="owner_restaurants_page")
+async def owner_restaurants_page(
+    request: Request,
+    message: str | None = None,
+) -> Response:
+    """Render restaurants owned by the current user."""
+    session_or_redirect = _get_page_session(request)
+    if isinstance(session_or_redirect, RedirectResponse):
+        return session_or_redirect
+
+    session = session_or_redirect
+    error_message = None
+    restaurants: list[dict[str, Any]] = []
+    try:
+        owner_user_id = None if has_admin_role(session) else session["user_id"]
+        data = await meal_service_client.list_restaurants(
+            user_id=session["user_id"],
+            owner_user_id=owner_user_id,
+            size=100,
+        )
+        restaurants = _request_items(data)
+    except MealServiceError as exc:
+        error_message = exc.message
+
+    return _render(
+        request,
+        session,
+        "owner/restaurants.html",
+        restaurants=restaurants,
+        error_message=error_message,
+        success_message=message,
+    )
+
+
+@router.get(
+    "/restaurants/{restaurant_id}/manager-requests",
+    response_class=HTMLResponse,
+    name="owner_restaurant_manager_requests_page",
+)
+async def owner_restaurant_manager_requests_page(
+    request: Request,
+    restaurant_id: int,
+    message: str | None = None,
+    error: str | None = None,
+) -> Response:
+    """Render manager requests for an owned restaurant."""
+    session_or_redirect = _get_page_session(request)
+    if isinstance(session_or_redirect, RedirectResponse):
+        return session_or_redirect
+
+    session = session_or_redirect
+    error_message = error
+    restaurant: dict[str, Any] | None = None
+    manager_requests: list[dict[str, Any]] = []
+    try:
+        restaurant_data = await meal_service_client.get_restaurant_detail(
+            user_id=session["user_id"],
+            restaurant_id=restaurant_id,
+        )
+        restaurant = _response_data(restaurant_data)
+        data = await meal_service_client.list_restaurant_manager_requests(
+            user_id=session["user_id"],
+            restaurant_id=restaurant_id,
+        )
+        manager_requests = _request_items(data)
+    except MealServiceError as exc:
+        if error_message is None:
+            error_message = exc.message
+
+    return _render(
+        request,
+        session,
+        "owner/restaurant_manager_requests.html",
+        restaurant=restaurant,
+        restaurant_id=restaurant_id,
+        manager_requests=manager_requests,
+        error_message=error_message,
+        success_message=message,
+    )
+
+
+@router.post(
+    "/restaurants/{restaurant_id}/manager-requests/{request_id}/approve",
+    response_class=HTMLResponse,
+    name="approve_owner_restaurant_manager_request",
+)
+async def approve_owner_restaurant_manager_request(
+    request: Request,
+    restaurant_id: int,
+    request_id: int,
+) -> Response:
+    """Approve a manager request from the owner workflow."""
+    session, _ = await _require_owner_post_session(request)
+    try:
+        await meal_service_client.approve_restaurant_manager_request(
+            user_id=session["user_id"],
+            restaurant_id=restaurant_id,
+            request_id=request_id,
+        )
+    except MealServiceError as exc:
+        return RedirectResponse(
+            _url_with_message(
+                request,
+                "owner_restaurant_manager_requests_page",
+                exc.message,
+                query_name="error",
+                restaurant_id=restaurant_id,
+            ),
+            status_code=Config.HttpStatus.FOUND,
+        )
+
+    return RedirectResponse(
+        _url_with_message(
+            request,
+            "owner_restaurant_manager_requests_page",
+            "Manager 신청을 승인했습니다.",
+            restaurant_id=restaurant_id,
+        ),
+        status_code=Config.HttpStatus.FOUND,
+    )
 
 
 @router.get("/requests", response_class=HTMLResponse, name="owner_requests_page")
