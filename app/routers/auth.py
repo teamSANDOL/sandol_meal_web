@@ -62,7 +62,11 @@ async def callback(
 ) -> RedirectResponse:
     """Handle Keycloak callback, create a server-side session, and redirect home."""
     if not code or not state:
-        raise HTTPException(Config.HttpStatus.BAD_REQUEST, "missing_code_or_state")
+        logger.info("auth_callback: missing code/state; restarting login flow")
+        return RedirectResponse(
+            str(request.url_for("login")),
+            status_code=Config.HttpStatus.FOUND,
+        )
 
     login_state = pop_login_state(state)
     if login_state is None:
