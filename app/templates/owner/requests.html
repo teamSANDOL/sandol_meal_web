@@ -1,89 +1,61 @@
 {% extends "base.html" %}
 
-{% block title %}Owner Requests - Sandol Meal Web{% endblock %}
+{% block title %}내 등록 요청 - 산돌이 학식 콘솔{% endblock %}
 
 {% block content %}
-<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-    <div>
-        <p class="ops-section-title">식당주</p>
-        <h1 class="mt-2 text-3xl font-black tracking-tight">내 식당 등록 요청</h1>
-        <p class="mt-2 text-sm text-slate-600">제출한 요청의 진행 상태와 검토 결과를 확인합니다.</p>
+{% set status_labels = {'pending': '검토 대기', 'approved': '승인됨', 'rejected': '거절됨'} %}
+{% set status_class = {'pending': 'sd-badge--pending', 'approved': 'sd-badge--approved', 'rejected': 'sd-badge--rejected'} %}
+<div class="sd-main">
+    <div class="sd-page-head">
+        <div>
+            <div class="sd-eyebrow">OWNER</div>
+            <h1 class="sd-title">내 등록 요청</h1>
+            <p class="sd-sub">제출한 식당 등록 요청의 검토 상태를 확인해요.</p>
+        </div>
+        <a class="sd-btn sd-btn--primary" href="{{ request.url_for('new_owner_request_page') }}">🍽️ 새 식당 등록 요청</a>
     </div>
-    <div class="flex flex-wrap gap-2">
-        <a class="btn btn-outline" href="{{ request.url_for('owner_restaurants_page') }}">내 식당 관리</a>
-        <a class="btn btn-primary" href="{{ request.url_for('new_owner_request_page') }}">새 식당 등록 요청</a>
-    </div>
-</div>
 
-{% if success_message %}
-<div class="alert alert-success mb-4"><span>완료: {{ success_message }}</span></div>
-{% endif %}
+    {% if success_message %}<div class="sd-alert sd-alert--success">{{ success_message }}</div>{% endif %}
+    {% if error_message %}<div class="sd-alert sd-alert--error">{{ error_message }}</div>{% endif %}
 
-{% if error_message %}
-<div class="alert alert-error mb-4"><span>오류: {{ error_message }}</span></div>
-{% endif %}
+    {# 상태 필터 (B6: meal-service에 status 쿼리 파라미터 추가 필요 — 전까지는 meal-web에서 필터링) #}
+    <nav class="sd-tabs" style="margin-bottom:20px;" aria-label="상태 필터">
+        {% for key, label in [('', '전체'), ('pending', '대기'), ('approved', '승인'), ('rejected', '거절')] %}
+        <a class="sd-tab {{ 'active' if (status_filter or '') == key }}" href="{{ request.url_for('owner_requests_page') }}{{ ('?status=' ~ key) if key }}">{{ label }}{% if status_counts %} {{ status_counts.get(key or 'all', '') }}{% endif %}</a>
+        {% endfor %}
+    </nav>
 
-{% if requests %}
-<div class="ops-card">
-    <div class="ops-mobile-list p-4 md:hidden">
-        {% for restaurant_request in requests %}
-        <article class="ops-mobile-item">
-            <div class="flex items-start justify-between gap-3">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Request #{{ restaurant_request.get("id", "") }}</p>
-                    <h2 class="mt-2 text-lg font-bold text-slate-950">{{ restaurant_request.get("name", "") }}</h2>
+    {% if requests %}
+    <div class="sd-stack" style="gap:14px;">
+        {% for req in requests %}
+        <a class="sd-row" href="{{ request.url_for('owner_request_detail_page', request_id=req.get('id')) }}">
+            <div class="sd-icon-tile">🍚</div>
+            <div style="flex:1; min-width:200px;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <span style="font-family:var(--sd-point); font-size:18px; color:#283149;">{{ req.get('name', '') }}</span>
+                    <span class="sd-badge {{ status_class.get(req.get('status', ''), 'sd-badge--neutral') }}">{{ status_labels.get(req.get('status', ''), req.get('status', '')) }}</span>
                 </div>
-                <span class="badge badge-outline">{{ restaurant_request.get("status", "") }}</span>
+                <div style="color:#5D6B76; font-size:13px; margin-top:6px;">{{ req.get('establishment_type_label', req.get('establishment_type', '')) }} · {{ '교내 ' ~ (req.get('building') or '') if req.get('is_campus') else '교외' }}</div>
             </div>
-            <div class="ops-mobile-meta">
-                <p><strong>제출 시간</strong><br>{{ restaurant_request.get("submitted_time", "") }}</p>
-                <p><strong>상세 화면에서 확인 가능</strong><br>검토 시간, 거절 사유, 위치 정보, 운영/세부 시간</p>
+            <div style="text-align:right; min-width:130px;">
+                <div style="font-size:13px; color:#8E9BAC;">{{ '검토일' if req.get('reviewed_at') else '제출일' }}</div>
+                <div style="font-weight:700; font-size:14px; color:#3F4A54; margin-top:4px;">{{ req.get('reviewed_at') or req.get('submitted_at', '') }}</div>
             </div>
-            {% if restaurant_request.get("id") is not none %}
-            <div class="mt-4">
-                <a class="btn btn-sm btn-ghost w-full sm:w-auto" href="{{ request.url_for('owner_request_detail_page', request_id=restaurant_request.get("id")) }}">상세 보기 · 상태/위치 확인</a>
-            </div>
-            {% endif %}
-        </article>
+            <span style="color:#3E96B8; font-weight:700; font-size:14px;">상세 →</span>
+        </a>
         {% endfor %}
     </div>
-    <div class="overflow-x-auto">
-        <table class="table table-zebra hidden md:table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>식당명</th>
-                    <th>상태</th>
-                    <th>제출 시간</th>
-                    <th class="text-right">상세</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for restaurant_request in requests %}
-                <tr>
-                    <td class="font-mono text-xs text-slate-500">{{ restaurant_request.get("id", "") }}</td>
-                    <td class="font-semibold">{{ restaurant_request.get("name", "") }}</td>
-                    <td><span class="badge badge-outline">{{ restaurant_request.get("status", "") }}</span></td>
-                    <td class="text-sm text-slate-600">{{ restaurant_request.get("submitted_time", "") }}</td>
-                    <td class="text-right">
-                        {% if restaurant_request.get("id") is not none %}
-                        <a class="btn btn-ghost btn-sm" href="{{ request.url_for('owner_request_detail_page', request_id=restaurant_request.get("id")) }}">상세 확인</a>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    {% else %}
+    <div class="sd-card" style="padding:56px 32px; text-align:center;">
+        <img src="{{ request.url_for('static', path='img/sandol-logo.png') }}" alt="" style="width:72px; height:72px; border-radius:18px; opacity:.9;">
+        <h2 style="font-family:var(--sd-point); font-size:20px; color:#283149; margin:16px 0 8px; font-weight:normal;">{{ '이 상태의 요청이 없어요' if status_filter else '아직 등록 요청이 없어요' }}</h2>
+        <p class="sd-sub">{{ '다른 탭을 확인해보세요.' if status_filter else '첫 식당을 등록해보세요. 몇 가지 질문에 답하면 끝나요!' }}</p>
+        {% if not status_filter %}
+        <a class="sd-btn sd-btn--primary" style="margin-top:18px;" href="{{ request.url_for('new_owner_request_page') }}">🍽️ 새 식당 등록 요청</a>
+        {% endif %}
     </div>
+    {% endif %}
+
+    <div class="sd-alert sd-alert--tip" style="margin-top:28px;">💡 검토는 보통 1~2일 걸려요. 승인되면 <b>내 식당</b>에 나타나고, 바로 식단을 올릴 수 있어요.</div>
 </div>
-{% else %}
-<div class="ops-card">
-    <div class="card-body items-center py-14 text-center">
-        <div class="badge badge-ghost">등록 전</div>
-        <h2 class="card-title mt-2">아직 제출한 등록 요청이 없습니다.</h2>
-        <p class="text-sm text-slate-600">첫 등록 요청을 제출하면 이곳에 상태가 표시됩니다.</p>
-        <a class="btn btn-primary mt-2" href="{{ request.url_for('new_owner_request_page') }}">새 식당 등록 요청</a>
-    </div>
-</div>
-{% endif %}
 {% endblock %}

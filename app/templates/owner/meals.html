@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}식단 관리 - 산돌이 학식 콘솔{% endblock %}
+
+{% block content %}
+{# A2: 식당주/매니저용 식단 관리 — meal-service 권한(get_restaurant_with_permission)은 이미 열려 있음 #}
+{% set meal_type_class = {'아침': 'sd-badge--pending', '브런치': 'sd-badge--pending', '점심': 'sd-badge--info', '저녁': 'sd-badge--neutral'} %}
+<div class="sd-main" style="max-width:1080px;">
+    <div class="sd-page-head">
+        <div>
+            <div class="sd-eyebrow">OWNER</div>
+            <h1 class="sd-title">식단 관리</h1>
+            <p class="sd-sub">올린 메뉴는 학생들이 산돌이에게 물어볼 때 바로 보여요.</p>
+        </div>
+        <div class="sd-actions">
+            {% if restaurants|length > 1 %}
+            <form method="get" action="{{ request.url_for('owner_meals_page') }}">
+                <select class="sd-select" name="restaurant_id" onchange="this.form.submit()" style="width:auto; margin-top:0; border-radius:999px; font-weight:700;">
+                    {% for r in restaurants %}
+                    <option value="{{ r.get('id') }}" {{ 'selected' if selected_restaurant_id == r.get('id') }}>{{ r.get('name') }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            {% endif %}
+            <a class="sd-btn sd-btn--primary" href="{{ request.url_for('owner_new_meal_page') }}?restaurant_id={{ selected_restaurant_id }}">🍚 새 식단 올리기</a>
+        </div>
+    </div>
+
+    {% if success_message %}<div class="sd-alert sd-alert--success">{{ success_message }}</div>{% endif %}
+    {% if error_message %}<div class="sd-alert sd-alert--error">{{ error_message }}</div>{% endif %}
+
+    <div class="sd-banner" style="margin-bottom:24px;">
+        <img src="{{ request.url_for('static', path='img/sandol-logo.png') }}" alt="산돌이">
+        <div style="flex:1; min-width:220px; color:#1F3D4C;">
+            <div style="font-family:var(--sd-point); font-size:16px; color:#283149;">{{ greeting_title or '사장님, 오늘 식단을 확인해주세요!' }}</div>
+            <div style="font-size:13px; margin-top:3px;">{{ greeting_sub or '메뉴를 올리면 학생들이 카카오톡에서 바로 확인할 수 있어요.' }}</div>
+        </div>
+        <span class="sd-brand-badge" style="background:rgba(255,255,255,.75);">오늘 · {{ today_label }}</span>
+    </div>
+
+    {# 오늘 끼니별 현황 (A7의 owner 버전: GET /meals/restaurant/{id}/latest) #}
+    <div class="sd-grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); margin-bottom:32px;">
+        {% for slot in today_slots %}
+        <div class="sd-card sd-card--tight" style="border-radius:20px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <span style="font-family:var(--sd-point); font-size:16px; color:#283149;">{{ slot.get('emoji', '') }} {{ slot.get('label', '') }}</span>
+                <span class="sd-badge {{ 'sd-badge--ok' if slot.get('meal') else 'sd-badge--danger' }}" style="font-size:11px;">{{ '등록 완료' if slot.get('meal') else '미등록' }}</span>
+            </div>
+            <div style="color:#5D6B76; font-size:13px; line-height:1.6; margin-top:10px; min-height:40px;">{{ slot.get('meal', {}).get('menu', [])|join(' · ') if slot.get('meal') else '아직 메뉴가 없어요. 학생들이 기다리고 있어요!' }}</div>
+            {% if slot.get('meal') %}
+            <a style="display:inline-block; margin-top:10px; font-weight:700; font-size:13px;" href="{{ request.url_for('owner_edit_meal_page', meal_id=slot.get('meal', {}).get('id')) }}">수정하기 →</a>
+            {% else %}
+            <a style="display:inline-block; margin-top:10px; font-weight:700; font-size:13px;" href="{{ request.url_for('owner_new_meal_page') }}?restaurant_id={{ selected_restaurant_id }}&meal_type={{ slot.get('key', '') }}">지금 올리기 →</a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <h2 style="font-family:var(--sd-point); font-size:17px; color:#283149; margin:0 0 14px; font-weight:normal;">식단 기록</h2>
+    {% if meals %}
+    <div class="sd-stack">
+        {% for meal in meals %}
+        <div class="sd-row">
+            <div style="flex:none; text-align:center; background:var(--sd-bg); border-radius:12px; padding:8px 14px; min-width:76px;">
+                <div style="font-size:12px; color:#8E9BAC; font-weight:700;">{{ meal.get('dow_label', '') }}</div>
+                <div style="font-weight:800; color:#283149; font-size:15px;">{{ meal.get('date', meal.get('served_date', '')) }}</div>
+            </div>
+            <span class="sd-badge {{ meal_type_class.get(meal.get('meal_type_label', ''), 'sd-badge--neutral') }}">{{ meal.get('meal_type_label', meal.get('meal_type', '')) }}</span>
+            <div style="flex:1; min-width:200px; color:#3F4A54; font-size:14px; line-height:1.6;">{{ meal.get('menu', [])|join(' · ') }}</div>
+            <div class="sd-actions" style="flex:none; gap:8px;">
+                <a class="sd-btn sd-btn--ghost sd-btn--xs" href="{{ request.url_for('owner_edit_meal_page', meal_id=meal.get('id')) }}">수정</a>
+                {# A1: 식단 삭제 — DELETE /meals/{meal_id} #}
+                <form method="post" action="{{ request.url_for('delete_owner_meal', meal_id=meal.get('id')) }}" onsubmit="return confirm('{{ meal.get('date', meal.get('served_date', '')) }} {{ meal.get('meal_type_label', '') }} 식단을 삭제할까요? 학생들에게 더 이상 보이지 않아요.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button class="sd-btn sd-btn--danger sd-btn--xs" type="submit">삭제</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="sd-card" style="padding:48px 32px; text-align:center;">
+        <img src="{{ request.url_for('static', path='img/sandol-logo.png') }}" alt="" style="width:64px; height:64px; border-radius:16px; opacity:.9;">
+        <h3 style="font-family:var(--sd-point); font-size:18px; color:#283149; margin:14px 0 6px; font-weight:normal;">아직 올린 식단이 없어요</h3>
+        <p class="sd-sub" style="font-size:14px;">첫 식단을 올리면 학생들에게 바로 보여요!</p>
+        <a class="sd-btn sd-btn--primary sd-btn--sm" style="margin-top:18px;" href="{{ request.url_for('owner_new_meal_page') }}?restaurant_id={{ selected_restaurant_id }}">🍚 새 식단 올리기</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

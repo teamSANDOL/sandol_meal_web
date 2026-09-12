@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}{{ '식단 수정' if meal else '식단 올리기' }} - 산돌이 학식 콘솔{% endblock %}
+
+{% block content %}
+{# 등록: POST create_owner_meal / 수정: POST update_owner_meal — 메뉴는 hidden textarea(줄바꿈 구분)로 제출 (기존 admin meal_form과 동일 규약) #}
+<div class="sd-main sd-main--sm" style="max-width:720px;">
+    <div class="sd-page-head">
+        <div>
+            <div class="sd-eyebrow">OWNER</div>
+            <h1 class="sd-title">{{ '식단 수정' if meal else '식단 올리기' }}</h1>
+            <p class="sd-sub">메뉴는 하나씩 추가하고, 잘못 넣었으면 눌러서 빼세요.</p>
+        </div>
+        <a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ request.url_for('owner_meals_page') }}">목록으로</a>
+    </div>
+
+    {% if error_message %}<div class="sd-alert sd-alert--error">{{ error_message }}</div>{% endif %}
+
+    <form class="sd-card" style="padding:32px 36px;" method="post"
+          action="{{ request.url_for('update_owner_meal', meal_id=meal.get('id')) if meal else request.url_for('create_owner_meal') }}"
+          hx-boost="true" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-indicator="#global-loading">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="sd-grid sd-grid--fields">
+            <div>
+                <label class="sd-label" for="restaurant_id">식당 *</label>
+                {% if meal %}
+                <input class="sd-input" type="text" value="{{ meal.get('restaurant_name', '') }}" disabled>
+                {% else %}
+                <select class="sd-select" id="restaurant_id" name="restaurant_id" required>
+                    {% for r in restaurants %}
+                    <option value="{{ r.get('id') }}" {{ 'selected' if selected_restaurant_id == r.get('id') }}>{{ r.get('name') }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+            <div>
+                <label class="sd-label" for="date">식단 날짜 *</label>
+                <input class="sd-input" id="date" name="date" type="date" value="{{ form_values.get('date', today_iso) }}" required>
+            </div>
+        </div>
+
+        <div style="margin-top:22px;">
+            <span class="sd-label">끼니 *</span>
+            <div class="sd-actions" style="margin-top:8px;">
+                {% for key, label in [('breakfast', '아침'), ('brunch', '브런치'), ('lunch', '점심'), ('dinner', '저녁')] %}
+                <label class="sd-chip">
+                    <input type="radio" name="meal_type" value="{{ key }}" {{ 'checked' if form_values.get('meal_type', 'lunch') == key }} required>
+                    {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div style="margin-top:22px;">
+            <label class="sd-label" for="menu-entry">메뉴 (<span id="menu-count">0</span>개)</label>
+            <div style="display:flex; gap:10px; align-items:center; margin-top:8px;">
+                <input class="sd-input" id="menu-entry" type="text" placeholder="메뉴 이름 입력 후 Enter (쉼표로 여러 개 가능)" style="flex:1; margin-top:0;">
+                <button class="sd-btn sd-btn--secondary sd-btn--sm" type="button" id="menu-add">+ 추가</button>
+            </div>
+            <div id="menu-chips" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; min-height:40px; background:var(--sd-bg); border:1px dashed var(--sd-border-strong); border-radius:14px; padding:12px;"></div>
+            <p class="sd-help">칩을 누르면 그 메뉴만 빠져요. 전체를 다시 쓸 필요 없어요.</p>
+            <textarea id="menu-hidden" name="menu" class="hidden" required>{{ form_values.get('menu', '') }}</textarea>
+        </div>
+
+        <div class="sd-speech" style="margin-top:24px;">
+            <img src="{{ request.url_for('static', path='img/sandol-logo.png') }}" alt="">
+            <span class="msg" id="menu-preview">메뉴를 추가하면 학생들에게 보일 모습을 미리 보여드려요.</span>
+        </div>
+
+        <div class="sd-actions" style="justify-content:flex-end; margin-top:26px;">
+            <a class="sd-btn sd-btn--ghost" href="{{ request.url_for('owner_meals_page') }}">취소</a>
+            <button class="sd-btn sd-btn--primary" type="submit">{{ '수정 저장하기' if meal else '식단 올리기 🐾' }}</button>
+        </div>
+    </form>
+</div>
+
+<script>
+(function () {
+    var entry = document.getElementById('menu-entry');
+    var addBtn = document.getElementById('menu-add');
+    var chips = document.getElementById('menu-chips');
+    var hidden = document.getElementById('menu-hidden');
+    var count = document.getElementById('menu-count');
+    var preview = document.getElementById('menu-preview');
+    if (!entry || entry.dataset.ready === 'true') return;
+    entry.dataset.ready = 'true';
+    var menus = hidden.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+
+    function sync() {
+        hidden.value = menus.join('\n');
+        count.textContent = menus.length;
+        chips.innerHTML = '';
+        if (menus.length === 0) {
+            var empty = document.createElement('span');
+            empty.style.cssText = 'color:#B4AFA3;font-size:13px;padding:8px 4px;';
+            empty.textContent = '아직 추가한 메뉴가 없어요';
+            chips.appendChild(empty);
+        }
+        menus.forEach(function (name) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.title = '누르면 빠져요';
+            b.style.cssText = 'display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #D4E8F0;color:#2A4552;font-weight:600;font-size:14px;padding:8px 14px;white-space:nowrap;border-radius:999px;cursor:pointer;';
+            b.textContent = name + ' ✕';
+            b.addEventListener('click', function () {
+                menus = menus.filter(function (x) { return x !== name; });
+                sync();
+            });
+            chips.appendChild(b);
+        });
+        preview.textContent = menus.length
+            ? '학생 화면 미리보기 — 🍚 ' + menus.join(' · ')
+            : '메뉴를 추가하면 학생들에게 보일 모습을 미리 보여드려요.';
+    }
+    function add() {
+        entry.value.split(/[,\n]/).forEach(function (part) {
+            var v = part.trim();
+            if (v && menus.indexOf(v) === -1) menus.push(v);
+        });
+        entry.value = '';
+        sync();
+    }
+    addBtn.addEventListener('click', add);
+    entry.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); add(); }
+    });
+    sync();
+})();
+</script>
+{% endblock %}
