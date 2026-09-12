@@ -94,4 +94,5 @@ class Config:
         UNAUTHORIZED: int = 401
         FORBIDDEN: int = 403
         NOT_FOUND: int = 404
+        METHOD_NOT_ALLOWED: int = 405
         INTERNAL_SERVER_ERROR: int = 500

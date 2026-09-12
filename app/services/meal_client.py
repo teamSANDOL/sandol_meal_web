@@ -1,6 +1,7 @@
 """Meal-service API client for sandol_meal_web."""
 
 from collections.abc import Mapping
+from datetime import date
 from typing import Any, Literal, TypedDict, cast
 
 import httpx
@@ -69,6 +70,7 @@ class MealPayload(TypedDict):
     restaurant_id: int
     meal_type: Literal["breakfast", "brunch", "lunch", "dinner"]
     menu: list[str]
+    date: str
 
 
 class MealServiceError(Exception):
@@ -185,7 +187,10 @@ def build_restaurant_payload(
         )
     typed_establishment_type = cast(EstablishmentType, establishment_type)
     price = _optional_int(form_data.get("price"))
-    if typed_establishment_type in {"fixed_korean_buffet", "variable_korean_buffet"} and price is None:
+    if (
+        typed_establishment_type in {"fixed_korean_buffet", "variable_korean_buffet"}
+        and price is None
+    ):
         raise MealServiceError(
             Config.HttpStatus.BAD_REQUEST,
             "한식 뷔페 유형은 1인 가격을 입력해야 합니다.",
@@ -321,10 +326,25 @@ def build_meal_payload(form_data: Mapping[str, Any]) -> MealPayload:
             "메뉴는 한 줄에 하나씩 입력해주세요.",
         )
 
+    meal_date = _blank_to_none(form_data.get("date") or form_data.get("served_date"))
+    if meal_date is None:
+        raise MealServiceError(
+            Config.HttpStatus.BAD_REQUEST,
+            "식단 날짜를 선택해주세요.",
+        )
+    try:
+        date.fromisoformat(meal_date)
+    except ValueError as exc:
+        raise MealServiceError(
+            Config.HttpStatus.BAD_REQUEST,
+            "식단 날짜를 올바르게 입력해주세요.",
+        ) from exc
+
     return {
         "restaurant_id": restaurant_id,
         "meal_type": cast(Literal["breakfast", "brunch", "lunch", "dinner"], meal_type),
         "menu": menu,
+        "date": meal_date,
     }
 
 
@@ -367,7 +387,9 @@ class MealServiceClient:
             params=params,
         )
 
-    async def get_request_detail(self, *, user_id: str, request_id: int) -> dict[str, Any]:
+    async def get_request_detail(
+        self, *, user_id: str, request_id: int
+    ) -> dict[str, Any]:
         """Return a single restaurant submission request."""
         return await self._request_json(
             "GET",
@@ -401,7 +423,7 @@ class MealServiceClient:
             payload=build_restaurant_request_payload(form_data),
         )
 
-    async def list_restaurants(
+    async def list_restaurants(  # noqa: PLR0913
         self,
         *,
         user_id: str,
@@ -409,6 +431,9 @@ class MealServiceClient:
         size: int | None = None,
         owner_user_id: str | None = None,
         manager_user_id: str | None = None,
+        name: str | None = None,
+        establishment_type: str | None = None,
+        is_campus: str | None = None,
     ) -> dict[str, Any]:
         """List registered restaurants visible to the current admin workflow."""
         params: dict[str, Any] = self._pagination_params(page=page, size=size) or {}
@@ -416,6 +441,12 @@ class MealServiceClient:
             params["owner_user_id"] = owner_user_id
         if manager_user_id is not None:
             params["manager_user_id"] = manager_user_id
+        if name:
+            params["name"] = name
+        if establishment_type:
+            params["establishment_type"] = establishment_type
+        if is_campus in {"true", "false"}:
+            params["is_campus"] = is_campus
         return await self._request_json(
             "GET",
             "/restaurants/",
@@ -533,6 +564,45 @@ class MealServiceClient:
             user_id=user_id,
         )
 
+    async def reject_restaurant_manager_request(
+        self,
+        *,
+        user_id: str,
+        restaurant_id: int,
+        request_id: int,
+        reason: str,
+    ) -> dict[str, Any]:
+        """Reject a manager registration request with a reason.
+
+        meal-service exposes `/approval` but has no `/rejection` counterpart yet,
+        so this call fails until that endpoint ships.
+        """
+        rejection_reason = _blank_to_none(reason)
+        if rejection_reason is None:
+            raise MealServiceError(
+                Config.HttpStatus.BAD_REQUEST,
+                "거절 사유는 필수 입력 사항입니다.",
+            )
+        return await self._request_json(
+            "POST",
+            f"/restaurants/{restaurant_id}/manager-requests/{request_id}/rejection",
+            user_id=user_id,
+            json={"message": rejection_reason},
+        )
+
+    async def create_restaurant_manager_request(
+        self,
+        *,
+        user_id: str,
+        restaurant_id: int,
+    ) -> dict[str, Any]:
+        """Apply to become a manager of a restaurant."""
+        return await self._request_json(
+            "POST",
+            f"/restaurants/{restaurant_id}/manager-requests",
+            user_id=user_id,
+        )
+
     async def add_restaurant_manager(
         self,
         *,
@@ -590,6 +660,28 @@ class MealServiceClient:
             user_id=user_id,
         )
 
+    def _meal_filter_params(  # noqa: PLR0913
+        self,
+        *,
+        page: int | None,
+        size: int | None,
+        start_date: str | None,
+        end_date: str | None,
+        restaurant_name: str | None = None,
+        meal_type: str | None = None,
+    ) -> dict[str, Any]:
+        """Build the shared meal list query parameters."""
+        params: dict[str, Any] = self._pagination_params(page=page, size=size) or {}
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        if restaurant_name:
+            params["restaurant_name"] = restaurant_name
+        if meal_type:
+            params["meal_type"] = meal_type
+        return params
+
     async def list_meals(  # noqa: PLR0913
         self,
         *,
@@ -598,13 +690,18 @@ class MealServiceClient:
         size: int | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
+        restaurant_name: str | None = None,
+        meal_type: str | None = None,
     ) -> dict[str, Any]:
         """List filtered meal records visible to the admin workflow."""
-        params: dict[str, Any] = self._pagination_params(page=page, size=size) or {}
-        if start_date:
-            params["start_date"] = start_date
-        if end_date:
-            params["end_date"] = end_date
+        params = self._meal_filter_params(
+            page=page,
+            size=size,
+            start_date=start_date,
+            end_date=end_date,
+            restaurant_name=restaurant_name,
+            meal_type=meal_type,
+        )
         return await self._request_json(
             "GET",
             "/meals",
@@ -621,18 +718,70 @@ class MealServiceClient:
         size: int | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
+        meal_type: str | None = None,
     ) -> dict[str, Any]:
         """List meal records for one restaurant using the existing API."""
-        params: dict[str, Any] = self._pagination_params(page=page, size=size) or {}
-        if start_date:
-            params["start_date"] = start_date
-        if end_date:
-            params["end_date"] = end_date
+        params = self._meal_filter_params(
+            page=page,
+            size=size,
+            start_date=start_date,
+            end_date=end_date,
+            meal_type=meal_type,
+        )
         return await self._request_json(
             "GET",
             f"/meals/restaurant/{restaurant_id}",
             user_id=user_id,
             params=params or None,
+        )
+
+    async def list_latest_meals(
+        self,
+        *,
+        user_id: str,
+        size: int | None = None,
+        meal_date: str | None = None,
+    ) -> dict[str, Any]:
+        """List the latest meal per restaurant and meal type."""
+        params: dict[str, int | str] = dict(
+            self._pagination_params(page=1, size=size) or {}
+        )
+        if meal_date:
+            params = {**(params or {}), "date": meal_date}
+        return await self._request_json(
+            "GET",
+            "/meals/latest",
+            user_id=user_id,
+            params=params,
+        )
+
+    async def list_latest_meals_by_restaurant(
+        self,
+        *,
+        user_id: str,
+        restaurant_id: int,
+    ) -> dict[str, Any]:
+        """List the latest meal per meal type for one restaurant."""
+        return await self._request_json(
+            "GET",
+            f"/meals/restaurant/{restaurant_id}/latest",
+            user_id=user_id,
+        )
+
+    async def delete_meal(self, *, user_id: str, meal_id: int) -> None:
+        """Delete a meal record."""
+        await self._request_empty(
+            "DELETE",
+            f"/meals/{meal_id}",
+            user_id=user_id,
+        )
+
+    async def sync_meals(self, *, user_id: str) -> None:
+        """Trigger a forced meal synchronization."""
+        await self._request_empty(
+            "POST",
+            "/meals/meal_sync",
+            user_id=user_id,
         )
 
     async def get_meal_detail(
@@ -659,6 +808,7 @@ class MealServiceClient:
         create_payload = {
             "meal_type": payload["meal_type"],
             "menu": payload["menu"],
+            "date": payload["date"],
         }
         return await self._request_json(
             "POST",
