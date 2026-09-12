@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}대시보드 - 산돌이 학식 콘솔{% endblock %}
+
+{% block content %}
+{# 신규 라우트: GET /admin (admin_dashboard_page) — A7 최신 식단(GET /meals/latest), A8 동기화(POST /meals/meal_sync) #}
+<div class="sd-main">
+    <div class="sd-banner sd-banner-navy" style="padding:26px 32px; margin-bottom:24px;">
+        <img src="{{ request.url_for('static', path='img/sandol-logo.png') }}" alt="산돌이" style="width:60px; height:60px; border-radius:16px;">
+        <div style="flex:1; min-width:240px;">
+            <h1 style="font-weight:800; font-size:26px; letter-spacing:-.02em; color:#fff; margin:0 0 4px;">운영진님, 어서오세요!</h1>
+            <p style="color:#C6D0DE; margin:0; font-size:14px;">{{ today_label }} · 검토할 요청 <b style="color:#95E0F4;">{{ pending_request_count or 0 }}건</b> · 매니저 신청 <b style="color:#95E0F4;">{{ pending_manager_request_count or 0 }}건</b>이 기다리고 있어요.</p>
+        </div>
+        <form method="post" action="{{ request.url_for('admin_meal_sync') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="sd-btn sd-btn--sm" type="submit" style="background:rgba(149,224,244,.12); border:1px solid rgba(149,224,244,.4); color:#95E0F4;">🔄 식단 강제 동기화</button>
+        </form>
+    </div>
+
+    {% if success_message %}<div class="sd-alert sd-alert--success">{{ success_message }}</div>{% endif %}
+    {% if error_message %}<div class="sd-alert sd-alert--error">{{ error_message }}</div>{% endif %}
+
+    <div class="sd-grid sd-grid--stats" style="margin-bottom:32px;">
+        <a class="sd-card sd-card--tight" href="{{ request.url_for('admin_requests_page') }}" style="color:inherit;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+                <span style="font-size:13px; font-weight:700; color:#8E9BAC;">검토 대기 요청</span><span style="font-size:22px;">📮</span>
+            </div>
+            <div style="font-family:var(--sd-point); font-size:34px; color:{{ '#B3372B' if pending_request_count else '#283149' }}; margin-top:8px;">{{ pending_request_count or 0 }}건</div>
+            <div style="font-size:13px; color:#3E96B8; font-weight:700; margin-top:6px;">바로 검토하기 →</div>
+        </a>
+        <a class="sd-card sd-card--tight" href="{{ request.url_for('admin_restaurants_page') }}" style="color:inherit;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+                <span style="font-size:13px; font-weight:700; color:#8E9BAC;">등록 식당</span><span style="font-size:22px;">🏪</span>
+            </div>
+            <div style="font-family:var(--sd-point); font-size:34px; color:#283149; margin-top:8px;">{{ restaurant_count or 0 }}곳</div>
+            <div style="font-size:13px; color:#3E96B8; font-weight:700; margin-top:6px;">식당 관리 →</div>
+        </a>
+        <a class="sd-card sd-card--tight" href="{{ request.url_for('admin_meals_page') }}" style="color:inherit;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+                <span style="font-size:13px; font-weight:700; color:#8E9BAC;">오늘 등록된 식단</span><span style="font-size:22px;">🍚</span>
+            </div>
+            <div style="font-family:var(--sd-point); font-size:34px; color:#283149; margin-top:8px;">{{ today_meal_count or 0 }} / {{ restaurant_count or 0 }}곳</div>
+            <div style="font-size:13px; color:#3E96B8; font-weight:700; margin-top:6px;">식단 관리 →</div>
+        </a>
+    </div>
+
+    <div class="sd-page-head" style="margin-bottom:16px;">
+        <div>
+            <h2 style="font-family:var(--sd-point); font-size:18px; color:#283149; margin:0 0 4px; font-weight:normal;">식당별 최신 식단</h2>
+            <p class="sd-sub" style="font-size:13px;">오늘 식단이 비어있는 식당은 산돌이가 학생들에게 보여줄 게 없어요.</p>
+        </div>
+        <a class="sd-btn sd-btn--primary sd-btn--sm" href="{{ request.url_for('admin_new_meal_page') }}">🍚 식단 대신 올리기</a>
+    </div>
+    <div class="sd-grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px;">
+        {% for item in latest_meals %}
+        <div class="sd-card sd-card--tight" style="border-radius:18px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <span style="font-weight:800; color:#283149; font-size:15px;">{{ item.get('restaurant_name', '') }}</span>
+                <span class="sd-badge {{ 'sd-badge--ok' if item.get('is_today') else 'sd-badge--danger' }}" style="font-size:11px;">{{ ('오늘 ' ~ item.get('meal_type_label', '') ~ ' ✓') if item.get('is_today') else (item.get('stale_label') or '오늘 미등록') }}</span>
+            </div>
+            <div style="color:#5D6B76; font-size:13px; line-height:1.6; margin-top:8px; min-height:38px;">{{ item.get('menu', [])|join(' · ') if item.get('is_today') else ('마지막 식단: ' ~ item.get('date', item.get('served_date', '-')) ~ ' ' ~ item.get('meal_type_label', '')) }}</div>
+            <div style="font-size:12px; color:#8E9BAC; margin-top:8px;">{{ item.get('meta', '') }}</div>
+        </div>
+        {% else %}
+        <p class="sd-sub">아직 등록된 식당이 없어요.</p>
+        {% endfor %}
+    </div>
+
+    <div class="sd-grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); margin-top:32px;">
+        <a href="{{ request.url_for('admin_new_restaurant_page') }}" style="background:var(--sd-navy); border-radius:20px; padding:24px 28px; color:#fff; display:flex; align-items:center; gap:16px;">
+            <span style="font-size:30px;">🏪</span>
+            <span>
+                <span style="display:block; font-family:var(--sd-point); font-size:16px; color:#95E0F4;">식당 직접 생성</span>
+                <span style="display:block; font-size:13px; color:#B9C2CF; margin-top:4px;">등록 요청 없이 소유자를 지정해 바로 만들어요.</span>
+            </span>
+        </a>
+        <a class="sd-card sd-card--tight" href="{{ request.url_for('admin_requests_page') }}" style="display:flex; align-items:center; gap:16px; color:inherit;">
+            <span style="font-size:30px;">📮</span>
+            <span>
+                <span style="display:block; font-family:var(--sd-point); font-size:16px; color:#283149;">등록 요청 검토</span>
+                <span style="display:block; font-size:13px; color:#5D6B76; margin-top:4px;">사장님들이 보낸 요청을 승인하거나 거부해요.</span>
+            </span>
+        </a>
+        <a class="sd-card sd-card--tight" href="{{ request.url_for('admin_restaurants_page') }}" style="display:flex; align-items:center; gap:16px; color:inherit;">
+            <span style="font-size:30px;">👥</span>
+            <span>
+                <span style="display:block; font-family:var(--sd-point); font-size:16px; color:#283149;">매니저 · 소유자 관리</span>
+                <span style="display:block; font-size:13px; color:#5D6B76; margin-top:4px;">식당별 매니저 등록·해제와 소유자 변경까지.</span>
+            </span>
+        </a>
+    </div>
+</div>
+{% endblock %}

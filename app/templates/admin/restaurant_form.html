@@ -1,177 +1,142 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Restaurant Form - Sandol Meal Web{% endblock %}
+{% block title %}{{ '식당 수정' if restaurant else '식당 직접 생성' }} - 산돌이 학식 콘솔{% endblock %}
 
 {% block content %}
-<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-    <div>
-        <p class="ops-section-title">관리자 · 등록 식당</p>
-        <h1 class="mt-2 text-3xl font-black tracking-tight">{{ page_title }}</h1>
-        <p class="mt-2 text-sm text-slate-600">{{ page_description }}</p>
+{% set v = form_values or restaurant or {} %}
+<div class="sd-main sd-main--sm">
+    <div class="sd-page-head">
+        <div>
+            <div class="sd-eyebrow">ADMIN</div>
+            <h1 class="sd-title">{{ '식당 수정' if restaurant else '식당 직접 생성' }}</h1>
+            <p class="sd-sub">{{ 'ID를 제외한 모든 필드를 수정할 수 있어요.' if restaurant else '등록 요청 없이 바로 만들어요. 소유자를 꼭 지정해주세요.' }}</p>
+        </div>
+        <a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ request.url_for('admin_restaurants_page') }}">목록으로</a>
     </div>
-    <a class="btn btn-ghost" href="{{ back_url }}">등록 식당 목록으로</a>
-</div>
 
-{% if success_message %}
-<div class="alert alert-success mb-4"><span>완료: {{ success_message }}</span></div>
-{% endif %}
+    {% if error_message %}<div class="sd-alert sd-alert--error">{{ error_message }}</div>{% endif %}
 
-{% if error_message %}
-<div class="alert alert-error mb-4"><span>오류: {{ error_message }}</span></div>
-{% endif %}
-
-<form class="grid gap-6" method="post" action="{{ action_url }}" hx-post="{{ action_url }}" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-disabled-elt="find button[type='submit']" hx-indicator="#global-loading">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-
-    <section class="ops-card">
-        <div class="card-body gap-6">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="card-title">기본 정보</h2>
-                {% if restaurant_id %}
-                <span class="badge badge-outline">Restaurant #{{ restaurant_id }}</span>
-                {% endif %}
-            </div>
-            <div class="grid gap-4 md:grid-cols-2">
-                <div class="form-control gap-2 md:col-span-2">
-                    <label class="ops-label" for="owner_user_id">소유자 Keycloak 사용자 ID (owner_user_id)</label>
-                    <input class="ops-input" id="owner_user_id" name="owner_user_id" type="text" value="{{ form_values.get('owner_user_id', '') }}" placeholder="예: 123e4567-e89b-12d3-a456-426614174000" required>
-                    <p class="text-xs text-slate-500">관리자만 직접 변경할 수 있습니다. 일반 사용자의 소유권 이전은 이전 신청과 신규 소유자의 승인을 거치는 별도 절차가 필요합니다.</p>
+    <form class="sd-card" style="padding:32px 36px; display:flex; flex-direction:column; gap:24px;" method="post"
+          action="{{ request.url_for('update_admin_restaurant', restaurant_id=restaurant.get('id')) if restaurant else request.url_for('create_admin_restaurant') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div>
+            <h2 style="font-family:var(--sd-point); font-size:15px; color:var(--sd-teal); margin:0 0 14px; font-weight:normal;">기본 정보</h2>
+            <div class="sd-grid sd-grid--fields">
+                <div>
+                    <label class="sd-label" for="name">식당 이름 *</label>
+                    <input class="sd-input" id="name" name="name" type="text" value="{{ v.get('name', '') }}" placeholder="예: 구름 한식뷔페" required>
                 </div>
-                <div class="form-control gap-2">
-                    <label class="ops-label" for="name">식당명</label>
-                    <input class="ops-input" id="name" name="name" type="text" value="{{ form_values.get('name', '') }}" required>
-                </div>
-                <div class="form-control gap-2">
-                    <label class="ops-label" for="establishment_type">식당 유형</label>
-                    <select class="ops-select" id="establishment_type" name="establishment_type" required>
+                <div>
+                    <label class="sd-label" for="establishment_type">식당 유형 *</label>
+                    <select class="sd-select" id="establishment_type" name="establishment_type" required>
                         <option value="">선택</option>
-                        {% for value, label in establishment_type_options %}
-                        <option value="{{ value }}" {% if form_values.get('establishment_type') == value %}selected{% endif %}>{{ label }}</option>
+                        {% for key, label in [('student', '교내 학생식당'), ('fixed_menu_restaurant', '고정메뉴 일반식당'), ('fixed_korean_buffet', '고정메뉴형 한식뷔페'), ('variable_korean_buffet', '메뉴 변경형 한식뷔페')] %}
+                        <option value="{{ key }}" {{ 'selected' if v.get('establishment_type') == key }}>{{ label }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="form-control gap-2">
-                    <label class="ops-label" for="price">1인 가격(원)</label>
-                    <input class="ops-input" id="price" name="price" type="number" min="1" step="1" value="{{ form_values.get('price', '') }}" placeholder="뷔페 유형이면 필수">
+                <div>
+                    <label class="sd-label" for="owner_user_id">소유자 (user id) *</label>
+                    <input class="sd-input" id="owner_user_id" name="owner_user_id" type="text" value="{{ v.get('owner_user_id', '') }}" placeholder="keycloak sub" required>
+                </div>
+                <div>
+                    <label class="sd-label" for="price">1인 가격 (원)</label>
+                    <input class="sd-input" id="price" name="price" type="number" min="1" step="1" value="{{ v.get('price', '') }}" placeholder="한식뷔페 유형은 필수">
+                    <p class="sd-help">한식뷔페 유형(fixed/variable_korean_buffet)은 1인 가격이 꼭 필요해요.</p>
                 </div>
             </div>
         </div>
-    </section>
 
-    <section class="ops-card">
-        <div class="card-body gap-6">
-            <h2 class="card-title">위치 정보</h2>
-            <div class="grid gap-4 md:grid-cols-2">
-                <div class="form-control gap-2">
-                    <label class="ops-label" for="is_campus">교내 여부</label>
-                    <select class="ops-select" id="is_campus" name="is_campus" required>
-                        <option value="true" {% if form_values.get('is_campus', 'true') == 'true' %}selected{% endif %}>교내</option>
-                        <option value="false" {% if form_values.get('is_campus') == 'false' %}selected{% endif %}>교외</option>
-                    </select>
-                </div>
-                <div class="form-control gap-2">
-                    <label class="ops-label" for="building">건물명</label>
-                    <input class="ops-input" id="building" name="building" type="text" list="building-options" value="{{ form_values.get('building', '') }}" placeholder="교외면 비워둘 수 있습니다.">
-                    <datalist id="building-options">
-                        {% for option in building_options %}
-                        <option value="{{ option }}"></option>
-                        {% endfor %}
-                    </datalist>
-                </div>
-                <div class="form-control gap-2 md:col-span-2">
-                    <label class="ops-label" for="naver_map_link">네이버 지도 링크</label>
-                    <input class="ops-input" id="naver_map_link" name="naver_map_link" type="url" value="{{ form_values.get('naver_map_link', '') }}" placeholder="https://map.naver.com/...">
-                </div>
-                <div class="form-control gap-2 md:col-span-2">
-                    <label class="ops-label" for="kakao_map_link">카카오 지도 링크</label>
-                    <input class="ops-input" id="kakao_map_link" name="kakao_map_link" type="url" value="{{ form_values.get('kakao_map_link', '') }}" placeholder="https://place.map.kakao.com/...">
-                </div>
-                <div class="form-control gap-2">
-                    <label class="ops-label" for="latitude">위도</label>
-                    <input class="ops-input" id="latitude" name="latitude" type="number" step="any" value="{{ form_values.get('latitude', '') }}">
-                </div>
-                <div class="form-control gap-2">
-                    <label class="ops-label" for="longitude">경도</label>
-                    <input class="ops-input" id="longitude" name="longitude" type="number" step="any" value="{{ form_values.get('longitude', '') }}">
-                </div>
+        <div>
+            <h2 style="font-family:var(--sd-point); font-size:15px; color:var(--sd-teal); margin:0 0 14px; font-weight:normal;">위치</h2>
+            <div class="sd-actions" style="margin-bottom:14px;">
+                <label class="sd-chip"><input type="radio" name="is_campus" value="true" {{ 'checked' if v.get('is_campus') in [True, 'true'] }}>🏫 교내</label>
+                <label class="sd-chip"><input type="radio" name="is_campus" value="false" {{ 'checked' if v.get('is_campus') in [False, 'false'] }}>🚶 교외</label>
             </div>
-        </div>
-    </section>
-
-    <section class="ops-card">
-        <div class="card-body gap-6">
-            <h2 class="card-title">운영 시간</h2>
-            {% set time_fields = [
-                ('opening_time', '전체 운영 시간', true),
-                ('break_time', '브레이크 타임', false),
-                ('breakfast_time', '아침 시간', false),
-                ('brunch_time', '브런치 시간', false),
-                ('lunch_time', '점심 시간', false),
-                ('dinner_time', '저녁 시간', false)
-            ] %}
-            <div class="grid gap-4 lg:grid-cols-2">
-                {% for field_key, field_label, required in time_fields %}
-                <div class="rounded-2xl border border-base-300 bg-base-100 p-4">
-                    <p class="mb-3 text-sm font-semibold text-slate-700">{{ field_label }}</p>
-                    <div class="grid gap-3 md:grid-cols-2">
-                        <div class="form-control gap-2">
-                            <label class="ops-label" for="{{ field_key }}_start">시작</label>
-                            <select class="ops-select" id="{{ field_key }}_start" name="{{ field_key }}_start" {% if required %}required{% endif %}>
-                                <option value="">선택 안 함</option>
-                                {% for option in time_options %}
-                                <option value="{{ option }}" {% if form_values.get(field_key ~ '_start') == option %}selected{% endif %}>{{ option }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-control gap-2">
-                            <label class="ops-label" for="{{ field_key }}_end">종료</label>
-                            <select class="ops-select" id="{{ field_key }}_end" name="{{ field_key }}_end" {% if required %}required{% endif %}>
-                                <option value="">선택 안 함</option>
-                                {% for option in time_options %}
-                                <option value="{{ option }}" {% if form_values.get(field_key ~ '_end') == option %}selected{% endif %}>{{ option }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+            <div class="sd-grid sd-grid--fields">
+                <div>
+                    <label class="sd-label" for="building">건물 (교내)</label>
+                    <input class="sd-input" id="building" name="building" type="text" value="{{ v.get('building', '') }}" placeholder="TIP / 중앙 / E동 / 산학융합관 / 기타">
+                </div>
+                <div>
+                    <label class="sd-label" for="naver_map_link">네이버 지도 링크</label>
+                    <input class="sd-input" id="naver_map_link" name="naver_map_link" type="url" value="{{ v.get('naver_map_link', '') }}" placeholder="https://map.naver.com/...">
+                </div>
+                <div>
+                    <label class="sd-label" for="kakao_map_link">카카오 지도 링크</label>
+                    <input class="sd-input" id="kakao_map_link" name="kakao_map_link" type="url" value="{{ v.get('kakao_map_link', '') }}" placeholder="https://place.map.kakao.com/...">
+                </div>
+                <div class="sd-grid" style="grid-template-columns:1fr 1fr; gap:12px;">
+                    <div>
+                        <label class="sd-label" for="latitude">위도</label>
+                        <input class="sd-input" id="latitude" name="latitude" type="number" step="any" value="{{ v.get('latitude', '') }}">
+                    </div>
+                    <div>
+                        <label class="sd-label" for="longitude">경도</label>
+                        <input class="sd-input" id="longitude" name="longitude" type="number" step="any" value="{{ v.get('longitude', '') }}">
                     </div>
                 </div>
-                {% endfor %}
             </div>
         </div>
-    </section>
 
-    <section class="ops-card">
-        <div class="card-body gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h2 class="card-title">저장</h2>
-                <p class="text-sm text-slate-600">입력값을 meal-service로 전송해 실제 등록 식당 데이터를 저장합니다.</p>
-            </div>
-            <button class="btn btn-primary" type="submit">
-                <span class="htmx-indicator loading loading-spinner loading-sm"></span>
-                {{ submit_label }}
-            </button>
-        </div>
-    </section>
-</form>
-
-{% if restaurant_id %}
-<section class="ops-card mt-6 border-error/30">
-    <div class="card-body gap-4">
         <div>
-            <h2 class="card-title text-error">식당 삭제</h2>
-            <p class="mt-2 text-sm text-slate-600">이 식당과 연결된 운영 시간 정보가 함께 삭제됩니다. 삭제한 식당은 복구할 수 없습니다.</p>
+            <h2 style="font-family:var(--sd-point); font-size:15px; color:var(--sd-teal); margin:0 0 14px; font-weight:normal;">운영 시간</h2>
+            <div class="sd-grid sd-grid--fields">
+                <div>
+                    <label class="sd-label" for="opening_time_start">여는 시간 *</label>
+                    <input class="sd-input" id="opening_time_start" name="opening_time_start" type="time" value="{{ v.get('opening_time_start', '') }}" required>
+                </div>
+                <div>
+                    <label class="sd-label" for="opening_time_end">닫는 시간 *</label>
+                    <input class="sd-input" id="opening_time_end" name="opening_time_end" type="time" value="{{ v.get('opening_time_end', '') }}" required>
+                </div>
+                <div>
+                    <label class="sd-label" for="break_time_start">브레이크 시작</label>
+                    <input class="sd-input" id="break_time_start" name="break_time_start" type="time" value="{{ v.get('break_time_start', '') }}">
+                </div>
+                <div>
+                    <label class="sd-label" for="break_time_end">브레이크 종료</label>
+                    <input class="sd-input" id="break_time_end" name="break_time_end" type="time" value="{{ v.get('break_time_end', '') }}">
+                </div>
+                <div>
+                    <label class="sd-label" for="breakfast_time_start">아침 시작</label>
+                    <input class="sd-input" id="breakfast_time_start" name="breakfast_time_start" type="time" value="{{ v.get('breakfast_time_start', '') }}">
+                </div>
+                <div>
+                    <label class="sd-label" for="breakfast_time_end">아침 종료</label>
+                    <input class="sd-input" id="breakfast_time_end" name="breakfast_time_end" type="time" value="{{ v.get('breakfast_time_end', '') }}">
+                </div>
+                <div>
+                    <label class="sd-label" for="brunch_time_start">브런치 시작</label>
+                    <input class="sd-input" id="brunch_time_start" name="brunch_time_start" type="time" value="{{ v.get('brunch_time_start', '') }}">
+                </div>
+                <div>
+                    <label class="sd-label" for="brunch_time_end">브런치 종료</label>
+                    <input class="sd-input" id="brunch_time_end" name="brunch_time_end" type="time" value="{{ v.get('brunch_time_end', '') }}">
+                </div>
+                <div>
+                    <label class="sd-label" for="lunch_time_start">점심 시작</label>
+                    <input class="sd-input" id="lunch_time_start" name="lunch_time_start" type="time" value="{{ v.get('lunch_time_start', '') }}">
+                </div>
+                <div>
+                    <label class="sd-label" for="lunch_time_end">점심 종료</label>
+                    <input class="sd-input" id="lunch_time_end" name="lunch_time_end" type="time" value="{{ v.get('lunch_time_end', '') }}">
+                </div>
+                <div>
+                    <label class="sd-label" for="dinner_time_start">저녁 시작</label>
+                    <input class="sd-input" id="dinner_time_start" name="dinner_time_start" type="time" value="{{ v.get('dinner_time_start', '') }}">
+                </div>
+                <div>
+                    <label class="sd-label" for="dinner_time_end">저녁 종료</label>
+                    <input class="sd-input" id="dinner_time_end" name="dinner_time_end" type="time" value="{{ v.get('dinner_time_end', '') }}">
+                </div>
+            </div>
         </div>
-        <form class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" method="post" action="{{ request.url_for('delete_admin_restaurant', restaurant_id=restaurant_id) }}" hx-post="{{ request.url_for('delete_admin_restaurant', restaurant_id=restaurant_id) }}" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-disabled-elt="find button[type='submit']" hx-indicator="#global-loading">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <label class="label cursor-pointer justify-start gap-3">
-                <input class="checkbox checkbox-error" name="confirm_delete" type="checkbox" value="true" required>
-                <span class="label-text">‘{{ form_values.get('name', '이 식당') }}’ 삭제를 확인합니다.</span>
-            </label>
-            <button class="btn btn-error" type="submit">
-                <span class="htmx-indicator loading loading-spinner loading-sm"></span>
-                식당 삭제
-            </button>
-        </form>
-    </div>
-</section>
-{% endif %}
+
+        <div class="sd-actions" style="justify-content:flex-end; border-top:1px solid var(--sd-divider); padding-top:22px;">
+            <a class="sd-btn sd-btn--ghost" href="{{ request.url_for('admin_restaurants_page') }}">취소</a>
+            <button class="sd-btn sd-btn--primary" type="submit">{{ '수정 저장하기' if restaurant else '식당 생성하기' }}</button>
+        </div>
+    </form>
+</div>
 {% endblock %}

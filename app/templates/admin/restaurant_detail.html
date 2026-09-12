@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}{{ restaurant.get('name', '식당') }} - 산돌이 학식 콘솔{% endblock %}
+
+{% block content %}
+{# 탭: ?tab=info|managers|requests — 매니저/신청 화면은 기존 restaurant_managers.html·restaurant_manager_requests.html을 대체 #}
+{% set tab = tab or 'info' %}
+{% set req_status_labels = {'pending': '대기', 'approved': '승인됨', 'rejected': '거절됨'} %}
+{% set req_status_class = {'pending': 'sd-badge--pending', 'approved': 'sd-badge--approved', 'rejected': 'sd-badge--rejected'} %}
+{% set detail_url = request.url_for('admin_restaurant_detail_page', restaurant_id=restaurant.get('id')) %}
+<div class="sd-main sd-main--md">
+    <div class="sd-page-head">
+        <div style="display:flex; align-items:center; gap:16px;">
+            <div class="sd-icon-tile" style="width:56px; height:56px; border-radius:16px; font-size:28px;">🏪</div>
+            <div>
+                <div class="sd-eyebrow">ADMIN · 식당 상세</div>
+                <h1 class="sd-title" style="font-size:30px; margin:4px 0;">{{ restaurant.get('name', '') }}</h1>
+            </div>
+        </div>
+        <div class="sd-actions">
+            <a class="sd-btn sd-btn--primary sd-btn--sm" href="{{ request.url_for('admin_new_meal_page') }}?restaurant_id={{ restaurant.get('id') }}">🍚 식단 올리기</a>
+            <a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ request.url_for('admin_edit_restaurant_page', restaurant_id=restaurant.get('id')) }}">✏️ 정보 수정</a>
+            <a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ request.url_for('admin_restaurants_page') }}">목록으로</a>
+        </div>
+    </div>
+
+    {% if success_message %}<div class="sd-alert sd-alert--success">{{ success_message }}</div>{% endif %}
+    {% if error_message %}<div class="sd-alert sd-alert--error">{{ error_message }}</div>{% endif %}
+
+    <nav class="sd-tabs" style="margin-bottom:20px;" hx-boost="true" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-indicator="#global-loading">
+        <a class="sd-tab {{ 'active' if tab == 'info' }}" href="{{ detail_url }}?tab=info">정보 · 관리</a>
+        <a class="sd-tab {{ 'active' if tab == 'managers' }}" href="{{ detail_url }}?tab=managers">매니저 {{ managers|length if managers is defined else '' }}</a>
+        <a class="sd-tab {{ 'active' if tab == 'requests' }}" href="{{ detail_url }}?tab=requests">매니저 신청{% if pending_request_count %} 🔔{{ pending_request_count }}{% endif %}</a>
+    </nav>
+
+    {% if tab == 'info' %}
+    <div class="sd-stack" style="gap:20px;">
+        <div class="sd-card">
+            <h2 style="font-family:var(--sd-point); font-size:17px; color:#283149; margin:0 0 14px; font-weight:normal;">식당 정보</h2>
+            <dl style="margin:0;">
+                <div class="sd-kv"><dt>ID</dt><dd>{{ restaurant.get('id', '-') }}</dd></div>
+                <div class="sd-kv"><dt>유형</dt><dd>{{ restaurant.get('establishment_type_label', restaurant.get('establishment_type', '-')) }}</dd></div>
+                <div class="sd-kv"><dt>위치</dt><dd>{{ '교내 · ' ~ (restaurant.get('building') or '-') if restaurant.get('is_campus') else '교외' }}</dd></div>
+                <div class="sd-kv"><dt>운영 시간</dt><dd>{{ restaurant.get('opening_time_start', '-') }} ~ {{ restaurant.get('opening_time_end', '-') }}</dd></div>
+                {% if restaurant.get('break_time_start') %}<div class="sd-kv"><dt>브레이크 타임</dt><dd>{{ restaurant.get('break_time_start') }} ~ {{ restaurant.get('break_time_end', '-') }}</dd></div>{% endif %}
+                {% if restaurant.get('breakfast_time_start') %}<div class="sd-kv"><dt>아침 시간</dt><dd>{{ restaurant.get('breakfast_time_start') }} ~ {{ restaurant.get('breakfast_time_end', '-') }}</dd></div>{% endif %}
+                {% if restaurant.get('brunch_time_start') %}<div class="sd-kv"><dt>브런치 시간</dt><dd>{{ restaurant.get('brunch_time_start') }} ~ {{ restaurant.get('brunch_time_end', '-') }}</dd></div>{% endif %}
+                {% if restaurant.get('lunch_time_start') %}<div class="sd-kv"><dt>점심 시간</dt><dd>{{ restaurant.get('lunch_time_start') }} ~ {{ restaurant.get('lunch_time_end', '-') }}</dd></div>{% endif %}
+                {% if restaurant.get('dinner_time_start') %}<div class="sd-kv"><dt>저녁 시간</dt><dd>{{ restaurant.get('dinner_time_start') }} ~ {{ restaurant.get('dinner_time_end', '-') }}</dd></div>{% endif %}
+                <div class="sd-kv"><dt>1인 가격</dt><dd>{{ ('{:,}'.format(restaurant.get('price')) ~ '원') if restaurant.get('price') else '메뉴별 상이' }}</dd></div>
+                <div class="sd-kv"><dt>소유자</dt><dd>{{ restaurant.get('owner_name', restaurant.get('owner_user_id', '-')) }}</dd></div>
+                <div class="sd-kv"><dt>생성</dt><dd>{{ restaurant.get('created_at', '-') }}</dd></div>
+            </dl>
+        </div>
+
+        <div class="sd-card">
+            <h2 style="font-family:var(--sd-point); font-size:17px; color:#283149; margin:0 0 6px; font-weight:normal;">소유자 변경</h2>
+            <p style="color:#5D6B76; font-size:13px; line-height:1.6; margin:0 0 14px;">현재 소유자: <b>{{ restaurant.get('owner_name', restaurant.get('owner_user_id', '-')) }}</b> — 변경하면 기존 소유자는 즉시 권한을 잃어요. 소유권 이전 신청 워크플로(B4)가 도입되기 전까지는 관리자 직접 변경만 가능해요.</p>
+            <form class="sd-actions" method="post" action="{{ request.url_for('update_admin_restaurant', restaurant_id=restaurant.get('id')) }}" onsubmit="return confirm('소유자를 변경할까요? 기존 소유자는 즉시 권한을 잃어요.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input class="sd-input" type="text" name="owner_user_id" required placeholder="새 소유자 user id" style="flex:1; min-width:220px; margin-top:0;">
+                <button class="sd-btn sd-btn--secondary sd-btn--sm" type="submit">소유자 변경</button>
+            </form>
+        </div>
+
+        <div class="sd-card" style="border-color:var(--sd-danger-border);">
+            <h2 style="font-family:var(--sd-point); font-size:17px; color:var(--sd-danger-fg); margin:0 0 6px; font-weight:normal;">식당 삭제</h2>
+            <p style="color:#5D6B76; font-size:13px; line-height:1.6; margin:0 0 14px;">식당과 모든 식단 기록이 삭제돼요. 되돌릴 수 없어요.</p>
+            <form method="post" action="{{ request.url_for('delete_admin_restaurant', restaurant_id=restaurant.get('id')) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <label style="display:flex; align-items:center; gap:10px; background:var(--sd-bg); border:1px solid var(--sd-border); border-radius:12px; padding:12px 14px; cursor:pointer; font-size:14px; color:#3F4A54;">
+                    <input type="checkbox" name="confirm_delete" value="true" style="width:16px; height:16px; accent-color:#C0392B;" onchange="document.getElementById('delete-btn').disabled = !this.checked;">
+                    네, 완전히 삭제할게요
+                </label>
+                <button id="delete-btn" class="sd-btn sd-btn--danger sd-btn--sm" type="submit" disabled style="margin-top:12px;">식당 삭제하기</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if tab == 'managers' %}
+    <div class="sd-card">
+        <h2 style="font-family:var(--sd-point); font-size:17px; color:#283149; margin:0 0 6px; font-weight:normal;">매니저</h2>
+        <p style="color:#5D6B76; font-size:13px; margin:0 0 18px;">매니저는 이 식당의 식단을 등록·수정·삭제할 수 있어요.</p>
+        <div class="sd-stack" style="gap:10px;">
+            {% for m in managers %}
+            <div class="sd-row-inner">
+                <div class="sd-icon-tile sd-icon-tile--sm">🧑‍🍳</div>
+                <div style="flex:1; min-width:140px;">
+                    <div style="font-weight:700; color:#283149; font-size:14px;">{{ m.get('name', m.get('user_id', '')) }}</div>
+                    <div style="color:#8E9BAC; font-size:12px; margin-top:2px;">{{ m.get('registered_at', '') }} 등록</div>
+                </div>
+                <form method="post" action="{{ request.url_for('delete_admin_restaurant_manager', restaurant_id=restaurant.get('id')) }}" onsubmit="return confirm('{{ m.get('name', '') }} 님의 매니저 권한을 해제할까요?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="manager_user_id" value="{{ m.get('user_id', '') }}">
+                    <button class="sd-btn sd-btn--danger sd-btn--xs" type="submit">해제</button>
+                </form>
+            </div>
+            {% else %}
+            <p class="sd-sub" style="font-size:14px;">아직 매니저가 없어요.</p>
+            {% endfor %}
+        </div>
+        <form class="sd-actions" style="margin-top:18px;" method="post" action="{{ request.url_for('add_admin_restaurant_manager', restaurant_id=restaurant.get('id')) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input class="sd-input" type="text" name="manager_user_id" required placeholder="user id 또는 카카오 계정 이메일" style="flex:1; min-width:220px; margin-top:0;">
+            <button class="sd-btn sd-btn--secondary sd-btn--sm" type="submit">+ 직접 등록</button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if tab == 'requests' %}
+    <div class="sd-card">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+            <div>
+                <h2 style="font-family:var(--sd-point); font-size:17px; color:#283149; margin:0 0 4px; font-weight:normal;">매니저 신청</h2>
+                <p style="color:#5D6B76; font-size:13px; margin:0;">카카오봇·웹으로 접수된 신청과 처리 이력이에요.</p>
+            </div>
+            {# A5: 이력 — status=pending|approved|rejected|all #}
+            <nav class="sd-tabs">
+                {% for key, label in [('pending', '대기'), ('approved', '승인'), ('rejected', '거절'), ('all', '전체')] %}
+                <a class="sd-tab {{ 'active' if (request_status_filter or 'pending') == key }}" style="padding:6px 13px; font-size:12px;" href="{{ detail_url }}?tab=requests&status={{ key }}">{{ label }}</a>
+                {% endfor %}
+            </nav>
+        </div>
+        <div class="sd-stack" style="gap:10px;">
+            {% for mr in manager_requests %}
+            <div class="sd-row-inner">
+                <div class="sd-icon-tile sd-icon-tile--sm" style="background:var(--sd-warn-bg);">🙋</div>
+                <div style="flex:1; min-width:150px;">
+                    <div style="font-weight:700; color:#283149; font-size:14px;">{{ mr.get('applicant_name', mr.get('user_id', '')) }}</div>
+                    <div style="color:#8E9BAC; font-size:12px; margin-top:2px;">{{ mr.get('source_label', '') }} · {{ mr.get('created_at', '') }}</div>
+                </div>
+                <span class="sd-badge {{ req_status_class.get(mr.get('status', ''), 'sd-badge--neutral') }}">{{ req_status_labels.get(mr.get('status', ''), mr.get('status', '')) }}</span>
+                {% if mr.get('status') == 'pending' %}
+                <div class="sd-actions" style="gap:8px;">
+                    <form method="post" action="{{ request.url_for('approve_admin_restaurant_manager_request', restaurant_id=restaurant.get('id'), request_id=mr.get('id')) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button class="sd-btn sd-btn--secondary sd-btn--xs" type="submit">승인</button>
+                    </form>
+                    {# B1: meal-service /rejection 엔드포인트 추가 필요 #}
+                    <form method="post" action="{{ request.url_for('reject_admin_restaurant_manager_request', restaurant_id=restaurant.get('id'), request_id=mr.get('id')) }}" onsubmit="var r = prompt('거절 사유를 입력해주세요 (신청자에게 전달돼요)'); if (!r) return false; this.reason.value = r; return true;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="reason" value="">
+                        <button class="sd-btn sd-btn--danger sd-btn--xs" type="submit">거절</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <div style="text-align:center; padding:36px 0 20px;">
+                <img src="{{ request.url_for('static', path='img/sandol-logo.png') }}" alt="" style="width:56px; height:56px; border-radius:14px; opacity:.85;">
+                <p style="color:#8E9BAC; font-size:14px; margin:12px 0 0;">이 상태의 신청이 없어요.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
