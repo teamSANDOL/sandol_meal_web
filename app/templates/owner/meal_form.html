@@ -1,22 +1,23 @@
 {% extends "base.html" %}
 
-{% block title %}{{ '식단 수정' if meal else '식단 등록' }} - 산돌이 학식 콘솔{% endblock %}
+{% block title %}{{ '식단 수정' if meal else '식단 올리기' }} - 산돌이 학식 콘솔{% endblock %}
 
 {% block content %}
+{# 등록: POST create_owner_meal / 수정: POST update_owner_meal — 메뉴는 hidden textarea(줄바꿈 구분)로 제출 (기존 admin meal_form과 동일 규약) #}
 <div class="sd-main sd-main--sm" style="max-width:720px;">
     <div class="sd-page-head">
         <div>
-            <div class="sd-eyebrow">ADMIN</div>
-            <h1 class="sd-title">{{ '식단 수정' if meal else '식단 등록' }}</h1>
-            <p class="sd-sub">어느 식당이든 대신 올릴 수 있어요. 사장님이 요청한 경우에 활용하세요.</p>
+            <div class="sd-eyebrow">OWNER</div>
+            <h1 class="sd-title">{{ '식단 수정' if meal else '식단 올리기' }}</h1>
+            <p class="sd-sub">메뉴는 하나씩 추가하고, 잘못 넣었으면 눌러서 빼세요.</p>
         </div>
-        <a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ request.url_for('admin_meals_page') }}">목록으로</a>
+        <a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ request.url_for('owner_meals_page') }}">목록으로</a>
     </div>
 
     {% if error_message %}<div class="sd-alert sd-alert--error">{{ error_message }}</div>{% endif %}
 
     <form class="sd-card" style="padding:32px 36px;" method="post"
-          action="{{ request.url_for('update_admin_meal', meal_id=meal.get('id')) if meal else request.url_for('create_admin_meal') }}"
+          action="{{ request.url_for('update_owner_meal', meal_id=meal.get('id')) if meal else request.url_for('create_owner_meal') }}"
           hx-boost="true" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-indicator="#global-loading">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="sd-grid sd-grid--fields">
@@ -26,8 +27,7 @@
                 <input class="sd-input" type="text" value="{{ meal.get('restaurant_name', '') }}" disabled>
                 {% else %}
                 <select class="sd-select" id="restaurant_id" name="restaurant_id" required>
-                    <option value="">선택</option>
-                    {% for r in restaurant_options %}
+                    {% for r in restaurants %}
                     <option value="{{ r.get('id') }}" {{ 'selected' if selected_restaurant_id == r.get('id') }}>{{ r.get('name') }}</option>
                     {% endfor %}
                 </select>
@@ -68,8 +68,8 @@
         </div>
 
         <div class="sd-actions" style="justify-content:flex-end; margin-top:26px;">
-            <a class="sd-btn sd-btn--ghost" href="{{ request.url_for('admin_meals_page') }}">취소</a>
-            <button class="sd-btn sd-btn--primary" type="submit">{{ '수정 저장하기' if meal else '식단 등록하기' }}</button>
+            <a class="sd-btn sd-btn--ghost" href="{{ request.url_for('owner_meals_page') }}">취소</a>
+            <button class="sd-btn sd-btn--primary" type="submit">{{ '수정 저장하기' if meal else '식단 올리기 🐾' }}</button>
         </div>
     </form>
 </div>

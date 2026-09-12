@@ -1,107 +1,92 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Request Detail - Sandol Meal Web{% endblock %}
+{% block title %}등록 요청 검토 - 산돌이 학식 콘솔{% endblock %}
 
 {% block content %}
-<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-    <div>
-        <p class="ops-section-title">Admin</p>
-        <h1 class="mt-2 text-3xl font-black tracking-tight">관리자 식당 등록 요청 상세</h1>
-        <p class="mt-2 text-sm text-slate-600">요청 내용을 검토하고 승인 또는 거부 처리를 진행합니다.</p>
+{% set status = req.get('status', 'pending') %}
+{% set status_labels = {'pending': '검토 대기', 'approved': '승인됨', 'rejected': '거부됨'} %}
+{% set status_class = {'pending': 'sd-badge--pending', 'approved': 'sd-badge--approved', 'rejected': 'sd-badge--rejected'} %}
+<div class="sd-main sd-main--md">
+    <div class="sd-page-head">
+        <div>
+            <div class="sd-eyebrow">ADMIN · {{ req.get('id', '') }}</div>
+            <h1 class="sd-title">등록 요청 검토</h1>
+        </div>
+        <a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ request.url_for('admin_requests_page') }}">목록으로</a>
     </div>
-    <a class="btn btn-ghost" href="{{ request.url_for('admin_requests_page') }}">목록으로</a>
-</div>
 
-{% if success_message %}
-<div class="alert alert-success mb-4"><span>완료: {{ success_message }}</span></div>
-{% endif %}
+    {% if error_message %}<div class="sd-alert sd-alert--error">{{ error_message }}</div>{% endif %}
 
-{% if error_message %}
-<div class="alert alert-error mb-4"><span>오류: {{ error_message }}</span></div>
-{% endif %}
-
-{% if restaurant_request %}
-{% set detail_id = restaurant_request.get("id") or restaurant_request.get("request_id") or request_id %}
-<div class="grid gap-6">
-    <section class="ops-card">
-        <div class="card-body">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="card-title">기본 정보</h2>
-                <span class="badge badge-outline">{{ restaurant_request.get("status", "") }}</span>
+    <div class="sd-grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:20px; align-items:start;">
+        <div class="sd-card">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:8px;">
+                <span style="font-family:var(--sd-point); font-size:22px; color:#283149;">{{ req.get('name', '') }}</span>
+                <span class="sd-badge {{ status_class.get(status, 'sd-badge--neutral') }}">{{ status_labels.get(status, status) }}</span>
             </div>
-            <dl class="ops-detail-list mt-2">
-                <div class="ops-detail-item"><dt>ID</dt><dd>{{ detail_id }}</dd></div>
-                <div class="ops-detail-item"><dt>식당명</dt><dd>{{ restaurant_request.get("name", "") }}</dd></div>
-                <div class="ops-detail-item"><dt>식당 유형</dt><dd>{{ restaurant_request.get("establishment_type", "") }}</dd></div>
-                <div class="ops-detail-item"><dt>1인 가격</dt><dd>{% if restaurant_request.get("price") %}{{ restaurant_request.get("price") }}원{% else %}-{% endif %}</dd></div>
-                <div class="ops-detail-item"><dt>제출 시간</dt><dd>{{ restaurant_request.get("submitted_time", "") }}</dd></div>
-                <div class="ops-detail-item"><dt>검토 시간</dt><dd>{{ restaurant_request.get("reviewed_time", "") }}</dd></div>
-                <div class="ops-detail-item sm:col-span-2"><dt>거절 사유</dt><dd>{{ restaurant_request.get("rejection_message", "") or "-" }}</dd></div>
+            <span class="sd-badge sd-badge--info">{{ req.get('establishment_type_label', req.get('establishment_type', '')) }}</span>
+            <dl style="margin:18px 0 0;">
+                <div class="sd-kv"><dt>위치</dt><dd>{{ '교내 · ' ~ (req.get('building') or '-') if req.get('is_campus') else '교외' }}</dd></div>
+                {% if req.get('latitude') or req.get('longitude') %}<div class="sd-kv"><dt>위도 / 경도</dt><dd>{{ req.get('latitude', '-') }} / {{ req.get('longitude', '-') }}</dd></div>{% endif %}
+                <div class="sd-kv"><dt>운영 시간</dt><dd>{{ req.get('opening_time_start', '-') }} ~ {{ req.get('opening_time_end', '-') }}</dd></div>
+                {% if req.get('breakfast_time_start') %}<div class="sd-kv"><dt>아침 시간</dt><dd>{{ req.get('breakfast_time_start') }} ~ {{ req.get('breakfast_time_end', '-') }}</dd></div>{% endif %}
+                {% if req.get('lunch_time_start') %}<div class="sd-kv"><dt>점심 시간</dt><dd>{{ req.get('lunch_time_start') }} ~ {{ req.get('lunch_time_end', '-') }}</dd></div>{% endif %}
+                {% if req.get('dinner_time_start') %}<div class="sd-kv"><dt>저녁 시간</dt><dd>{{ req.get('dinner_time_start') }} ~ {{ req.get('dinner_time_end', '-') }}</dd></div>{% endif %}
+                {% if req.get('break_time_start') %}<div class="sd-kv"><dt>브레이크 타임</dt><dd>{{ req.get('break_time_start') }} ~ {{ req.get('break_time_end', '-') }}</dd></div>{% endif %}
+                <div class="sd-kv"><dt>1인 가격</dt><dd>{{ ('{:,}'.format(req.get('price')) ~ '원') if req.get('price') else '메뉴별 상이' }}</dd></div>
+                <div class="sd-kv"><dt>제출 시각</dt><dd>{{ req.get('submitted_at', '-') }}</dd></div>
             </dl>
+            {% if req.get('naver_map_link') or req.get('kakao_map_link') %}
+            <div class="sd-actions" style="margin-top:16px;">
+                {% if req.get('naver_map_link') %}<a class="sd-btn sd-btn--ghost sd-btn--xs" href="{{ req.get('naver_map_link') }}" target="_blank" rel="noopener">🗺️ 네이버 지도 열기</a>{% endif %}
+                {% if req.get('kakao_map_link') %}<a class="sd-btn sd-btn--ghost sd-btn--xs" href="{{ req.get('kakao_map_link') }}" target="_blank" rel="noopener">🗺️ 카카오 지도 열기</a>{% endif %}
+            </div>
+            {% endif %}
         </div>
-    </section>
 
-{% set location = restaurant_request.get("location") %}
-{% if location %}
-    <section class="ops-card">
-        <div class="card-body">
-            <h2 class="card-title">위치</h2>
-            <dl class="ops-detail-list mt-2">
-                <div class="ops-detail-item"><dt>캠퍼스 내부</dt><dd>{{ location.get("is_campus", "") }}</dd></div>
-                <div class="ops-detail-item"><dt>건물</dt><dd>{{ location.get("building", "") }}</dd></div>
-                <div class="ops-detail-item sm:col-span-2"><dt>지도 링크</dt><dd>{{ location.get("map_links", "") }}</dd></div>
-                <div class="ops-detail-item"><dt>위도</dt><dd>{{ location.get("latitude", "") }}</dd></div>
-                <div class="ops-detail-item"><dt>경도</dt><dd>{{ location.get("longitude", "") }}</dd></div>
-            </dl>
-        </div>
-    </section>
-{% else %}
-    <div class="alert"><span>위치 정보가 없습니다.</span></div>
-{% endif %}
-
-    <section class="ops-card">
-        <div class="card-body">
-            <h2 class="card-title">시간</h2>
-            <dl class="ops-detail-list mt-2">
-                <div class="ops-detail-item"><dt>운영 시간</dt><dd>{{ restaurant_request.get("opening_time", "") }}</dd></div>
-                <div class="ops-detail-item"><dt>휴식 시간</dt><dd>{{ restaurant_request.get("break_time", "") }}</dd></div>
-                <div class="ops-detail-item"><dt>아침 시간</dt><dd>{{ restaurant_request.get("breakfast_time", "") }}</dd></div>
-                <div class="ops-detail-item"><dt>브런치 시간</dt><dd>{{ restaurant_request.get("brunch_time", "") }}</dd></div>
-                <div class="ops-detail-item"><dt>점심 시간</dt><dd>{{ restaurant_request.get("lunch_time", "") }}</dd></div>
-                <div class="ops-detail-item"><dt>저녁 시간</dt><dd>{{ restaurant_request.get("dinner_time", "") }}</dd></div>
-            </dl>
-        </div>
-    </section>
-
-    <section class="ops-card">
-        <div class="card-body gap-5">
-            <h2 class="card-title">검토</h2>
-            <div class="ops-action-grid">
-                <form class="rounded-2xl border border-success/30 bg-success/5 p-4" method="post" action="{{ request.url_for('approve_admin_request', request_id=detail_id) }}" hx-post="{{ request.url_for('approve_admin_request', request_id=detail_id) }}" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-disabled-elt="find button[type='submit']" hx-indicator="#global-loading">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <p class="mb-4 text-sm text-slate-600">정보가 올바르면 요청을 승인합니다.</p>
-                    <button class="btn btn-success w-full" type="submit">
-                        <span class="htmx-indicator loading loading-spinner loading-sm"></span>
-                        승인
-                    </button>
-                </form>
-
-                <form class="rounded-2xl border border-error/30 bg-error/5 p-4" method="post" action="{{ request.url_for('reject_admin_request', request_id=detail_id) }}" hx-post="{{ request.url_for('reject_admin_request', request_id=detail_id) }}" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-disabled-elt="find button[type='submit']" hx-indicator="#global-loading">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <div class="form-control gap-2">
-                        <label class="ops-label" for="message">거부 사유</label>
-                        <textarea class="ops-textarea" id="message" name="message" rows="4" cols="40" required></textarea>
+        <div class="sd-stack" style="gap:20px;">
+            <div class="sd-card">
+                <h3 style="font-family:var(--sd-point); font-size:16px; color:#283149; margin:0 0 14px; font-weight:normal;">신청자</h3>
+                <div style="display:flex; align-items:center; gap:14px;">
+                    <div class="sd-icon-tile sd-icon-tile--sm" style="background:var(--sd-warn-bg); width:44px; height:44px; font-size:20px;">🙋</div>
+                    <div>
+                        <div style="font-weight:700; color:#283149;">{{ req.get('submitter_name', req.get('submitter_user_id', '-')) }}</div>
+                        <div style="color:#8E9BAC; font-size:13px; margin-top:2px;">{{ req.get('submitter_meta', '') }}</div>
                     </div>
-                    <button class="btn btn-error mt-4 w-full" type="submit">
-                        <span class="htmx-indicator loading loading-spinner loading-sm"></span>
-                        거부
-                    </button>
+                </div>
+            </div>
+
+            {% if status == 'pending' %}
+            <div class="sd-card">
+                <h3 style="font-family:var(--sd-point); font-size:16px; color:#283149; margin:0 0 6px; font-weight:normal;">검토 결정</h3>
+                <p style="color:#5D6B76; font-size:13px; line-height:1.6; margin:0 0 18px;">승인하면 식당이 바로 생성되고, 신청자가 소유자로 지정돼요.</p>
+                <div class="sd-actions">
+                    <form method="post" action="{{ request.url_for('approve_admin_request', request_id=req.get('id')) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button class="sd-btn sd-btn--primary" type="submit">✅ 승인하기</button>
+                    </form>
+                    <button class="sd-btn sd-btn--danger" type="button" onclick="document.getElementById('reject-form').classList.toggle('hidden');">거부하기</button>
+                </div>
+                <form id="reject-form" class="hidden" method="post" action="{{ request.url_for('reject_admin_request', request_id=req.get('id')) }}" style="margin-top:16px;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <label class="sd-label" for="reason">거부 사유 (필수 — 신청자에게 그대로 전달돼요)</label>
+                    <textarea class="sd-textarea" id="reason" name="reason" rows="3" required placeholder="예: 지도 링크로 가게 위치를 확인할 수 없어요. 링크를 다시 확인해주세요."></textarea>
+                    <div class="sd-actions" style="justify-content:flex-end; margin-top:12px;">
+                        <button class="sd-btn sd-btn--danger-solid sd-btn--sm" type="submit">거부 확정</button>
+                    </div>
                 </form>
             </div>
+            {% elif status == 'approved' %}
+            <div class="sd-alert sd-alert--success" style="border-radius:24px; padding:24px 28px; margin:0;">
+                <b>승인 완료!</b> "{{ req.get('name', '') }}" 식당이 생성됐어요.
+                {% if req.get('restaurant_id') %}<br><a href="{{ request.url_for('admin_restaurant_detail_page', restaurant_id=req.get('restaurant_id')) }}" style="font-weight:700; color:var(--sd-ok-fg);">식당 상세로 이동 →</a>{% endif %}
+            </div>
+            {% elif status == 'rejected' %}
+            <div class="sd-alert sd-alert--error" style="border-radius:24px; padding:24px 28px; margin:0;">
+                <b>거부 완료</b><br>사유: {{ req.get('reject_reason', '-') }}<br>
+                <span style="font-size:13px;">신청자에게 사유가 그대로 전달됐어요.</span>
+            </div>
+            {% endif %}
         </div>
-    </section>
+    </div>
 </div>
-{% elif not error_message %}
-<div class="ops-card"><div class="card-body items-center py-14 text-center"><h2 class="card-title">요청 정보를 찾을 수 없습니다.</h2></div></div>
-{% endif %}
 {% endblock %}

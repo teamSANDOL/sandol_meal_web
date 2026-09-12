@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}New Owner Request - Sandol Meal Web{% endblock %}
+{% block title %}새 식당 등록 요청 - 산돌이 학식 콘솔{% endblock %}
 
 {% block content %}
 {% set time_options = [
@@ -20,418 +20,361 @@
 {% set selected_building = form_values.get('building', '') %}
 {% set meal_types_choice = form_values.get('meal_types_choice', 'custom' if form_values.get('breakfast_time_start') or form_values.get('breakfast_time_end') or form_values.get('lunch_time_start') or form_values.get('lunch_time_end') or form_values.get('dinner_time_start') or form_values.get('dinner_time_end') else 'opening_only') %}
 
-<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-    <div>
-        <p class="ops-section-title">Owner</p>
-        <h1 class="mt-2 text-3xl font-black tracking-tight">새 식당 등록 요청</h1>
-        <p class="mt-2 text-sm text-slate-600">한 질문씩 차근차근 답하면서 식당 정보를 입력해주세요.</p>
+<div class="sd-main sd-main--sm">
+    <div class="sd-page-head">
+        <div>
+            <div class="sd-eyebrow">OWNER</div>
+            <h1 class="sd-title">새 식당 등록 요청</h1>
+            <p class="sd-sub">산돌이가 묻는 대로 하나씩 답하면 끝나요.</p>
+        </div>
+        <a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ request.url_for('owner_requests_page') }}">목록으로</a>
     </div>
-    <a class="btn btn-ghost" href="{{ request.url_for('owner_requests_page') }}">목록으로</a>
-</div>
 
-{% if error_message %}
-<div class="alert alert-error mb-4"><span>오류: {{ error_message }}</span></div>
-{% endif %}
+    {% if error_message %}<div class="sd-alert sd-alert--error">오류: {{ error_message }}</div>{% endif %}
 
-<form class="grid gap-6" method="post" action="{{ request.url_for('create_owner_request') }}" hx-post="{{ request.url_for('create_owner_request') }}" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-disabled-elt="find button[type='submit']" hx-indicator="#global-loading">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <input id="is_campus" name="is_campus" type="hidden" value="{% if campus_choice == 'campus' %}true{% endif %}">
-    <input id="establishment_type" name="establishment_type" type="hidden" value="{{ form_values.get('establishment_type', '') }}">
+    <form method="post" action="{{ request.url_for('create_owner_request') }}" hx-post="{{ request.url_for('create_owner_request') }}" hx-target="#page-shell" hx-select="#page-shell" hx-swap="outerHTML transition:true" hx-disabled-elt="find button[type='submit']" hx-indicator="#global-loading">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input id="is_campus" name="is_campus" type="hidden" value="{% if campus_choice == 'campus' %}true{% endif %}">
+        <input id="establishment_type" name="establishment_type" type="hidden" value="{{ form_values.get('establishment_type', '') }}">
 
-    <section class="ops-card overflow-hidden">
-        <div class="card-body gap-6 p-6 sm:p-8 lg:p-10">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h2 class="card-title">식당 등록 질문</h2>
-                    <p class="text-sm text-slate-600">답변에 맞춰 필요한 질문만 이어서 보여드릴게요.</p>
+        <section class="sd-card" style="padding:0; overflow:hidden;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:20px 32px; border-bottom:1px solid var(--sd-divider);">
+                <div class="sd-speech" style="background:transparent; padding:0;">
+                    <img src="{{ request.url_for('static', path='img/sandol-logo.png') }}" alt="산돌이">
+                    <span class="msg">답변에 맞춰 필요한 질문만 이어서 보여드릴게요!</span>
                 </div>
-                <span id="step-progress" class="badge badge-primary badge-outline">질문 1 / 1</span>
+                <span id="step-progress" class="sd-badge sd-badge--info" style="flex:none;">질문 1 / 1</span>
             </div>
+            <div style="padding:28px 32px 32px;">
 
-            <div class="question-step space-y-5" data-step="name">
-                <div>
-                    <p class="ops-section-title">Q1</p>
-                    <h3 class="mt-3 text-2xl font-black tracking-tight">식당 이름이 무엇인가요?</h3>
-                    <p class="mt-2 text-sm text-slate-600">사용자에게 보여줄 식당 이름을 입력해주세요.</p>
+                <div class="question-step" data-step="name" style="display:flex; flex-direction:column; gap:18px;">
+                    <div>
+                        <p class="sd-eyebrow" style="margin:0;">Q1</p>
+                        <h3 style="margin:8px 0 6px; font-size:22px; font-weight:800; letter-spacing:-.02em; color:var(--sd-text-strong);">식당 이름이 무엇인가요?</h3>
+                        <p class="sd-sub" style="font-size:14px;">학생들에게 보여줄 식당 이름을 입력해주세요.</p>
+                    </div>
+                    <input class="sd-input" id="name" name="name" type="text" value="{{ form_values.get('name', '') }}" placeholder="예: 산학식당" required style="font-size:16px; padding:14px 16px;">
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button class="sd-btn sd-btn--primary" type="button" data-next>다음 →</button>
+                    </div>
                 </div>
-                <input class="ops-input text-base" id="name" name="name" type="text" value="{{ form_values.get('name', '') }}" placeholder="예: 산학식당" required>
-                <div class="flex justify-end">
-                    <button class="btn btn-primary" type="button" data-next>다음</button>
-                </div>
-            </div>
 
-            <div class="question-step hidden space-y-5" data-step="campus">
-                <div>
-                    <p class="ops-section-title">Q2</p>
-                    <h3 class="mt-3 text-2xl font-black tracking-tight">식당이 교내에 있나요, 교외에 있나요?</h3>
-                    <p class="mt-2 text-sm text-slate-600">위치에 따라 필요한 정보를 다르게 물어볼게요.</p>
+                <div class="question-step hidden" data-step="campus" style="flex-direction:column; gap:18px;">
+                    <div>
+                        <p class="sd-eyebrow" style="margin:0;">Q2</p>
+                        <h3 style="margin:8px 0 6px; font-size:22px; font-weight:800; letter-spacing:-.02em; color:var(--sd-text-strong);">식당이 교내에 있나요, 교외에 있나요?</h3>
+                        <p class="sd-sub" style="font-size:14px;">위치에 따라 필요한 정보를 다르게 물어볼게요.</p>
+                    </div>
+                    <div class="sd-grid sd-grid--choices">
+                        <label class="sd-choice" data-autonext="true">
+                            <input type="radio" name="campus_choice" value="campus" {% if campus_choice == 'campus' %}checked{% endif %}>
+                            <span class="t">🏫 교내에 있어요</span>
+                            <span class="d">학교 안 또는 교내 건물에 위치한 식당</span>
+                        </label>
+                        <label class="sd-choice" data-autonext="true">
+                            <input type="radio" name="campus_choice" value="offcampus" {% if campus_choice == 'offcampus' %}checked{% endif %}>
+                            <span class="t">🚶 교외에 있어요</span>
+                            <span class="d">학교 밖에 위치한 식당</span>
+                        </label>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <button class="sd-btn sd-btn--ghost" type="button" data-prev>← 이전</button>
+                        <button class="sd-btn sd-btn--primary" type="button" data-next>다음 →</button>
+                    </div>
                 </div>
-                <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                    <label class="ops-choice-card" data-autonext="true">
-                        <input class="sr-only" type="radio" name="campus_choice" value="campus" {% if campus_choice == 'campus' %}checked{% endif %}>
-                        <span class="block text-base font-semibold text-slate-900">교내에 있어요</span>
-                        <span class="mt-1 block text-sm text-slate-500">학교 안 또는 교내 건물에 위치한 식당</span>
-                    </label>
-                    <label class="ops-choice-card" data-autonext="true">
-                        <input class="sr-only" type="radio" name="campus_choice" value="offcampus" {% if campus_choice == 'offcampus' %}checked{% endif %}>
-                        <span class="block text-base font-semibold text-slate-900">교외에 있어요</span>
-                        <span class="mt-1 block text-sm text-slate-500">학교 밖에 위치한 식당</span>
-                    </label>
-                </div>
-                <div class="flex justify-between">
-                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
-                    <button class="btn btn-primary" type="button" data-next>다음</button>
-                </div>
-            </div>
 
-            <div class="question-step hidden space-y-5" data-step="campus-location">
-                <div>
-                    <p class="ops-section-title">Q3</p>
-                    <h3 class="mt-3 text-2xl font-black tracking-tight">식당이 위치한 건물이 어디인가요?</h3>
-                    <p class="mt-2 text-sm text-slate-600">어느 건물에 있는지 선택해주세요.</p>
-                </div>
-                    <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                <div class="question-step hidden" data-step="campus-location" style="flex-direction:column; gap:18px;">
+                    <div>
+                        <p class="sd-eyebrow" style="margin:0;">Q3</p>
+                        <h3 style="margin:8px 0 6px; font-size:22px; font-weight:800; letter-spacing:-.02em; color:var(--sd-text-strong);">식당이 위치한 건물이 어디인가요?</h3>
+                        <p class="sd-sub" style="font-size:14px;">어느 건물에 있는지 선택해주세요.</p>
+                    </div>
+                    <div class="sd-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px;">
                         {% for option in building_options %}
-                        <label class="ops-choice-card" data-autonext="true">
-                            <input class="sr-only" type="radio" name="building_choice" value="{{ option }}" {% if selected_building == option %}checked{% endif %}>
-                            <span class="block text-base font-semibold text-slate-900">{{ option }}</span>
+                        <label class="sd-choice" data-autonext="true">
+                            <input type="radio" name="building_choice" value="{{ option }}" {% if selected_building == option %}checked{% endif %}>
+                            <span class="t">{{ option }}</span>
                         </label>
                         {% endfor %}
-                        <label class="ops-choice-card sm:col-span-2 xl:col-span-1">
-                            <input class="sr-only" type="radio" name="building_choice" value="custom" {% if selected_building and selected_building not in building_options %}checked{% endif %}>
-                            <span class="block text-base font-semibold text-slate-900">기타</span>
-                            <span class="mt-1 block text-sm text-slate-500">직접 입력</span>
-                    </label>
+                        <label class="sd-choice">
+                            <input type="radio" name="building_choice" value="custom" {% if selected_building and selected_building not in building_options %}checked{% endif %}>
+                            <span class="t">기타</span>
+                            <span class="d">직접 입력</span>
+                        </label>
+                    </div>
+                    <div id="custom-building-wrap" class="hidden">
+                        <label class="sd-label" for="building">기타 건물명을 입력해주세요.</label>
+                        <input class="sd-input" id="building" name="building" type="text" value="{{ form_values.get('building', '') }}" placeholder="예: 학생회관">
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <button class="sd-btn sd-btn--ghost" type="button" data-prev>← 이전</button>
+                        <button class="sd-btn sd-btn--primary" type="button" data-next>다음 →</button>
+                    </div>
                 </div>
-                <div id="custom-building-wrap" class="hidden">
-                    <label class="ops-label" for="building">기타 건물명을 입력해주세요.</label>
-                    <input class="ops-input mt-2" id="building" name="building" type="text" value="{{ form_values.get('building', '') }}" placeholder="예: 학생회관">
-                </div>
-                <div class="flex justify-between">
-                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
-                    <button class="btn btn-primary" type="button" data-next>다음</button>
-                </div>
-            </div>
 
-            <div class="question-step hidden space-y-5" data-step="offcampus-location">
-                <div>
-                    <p class="ops-section-title">Q3</p>
-                    <h3 class="mt-3 text-2xl font-black tracking-tight">가게 위치를 알려주세요.</h3>
-                    <p class="mt-2 text-sm text-slate-600">지도 링크가 있다면 입력해주세요. 없어도 다음 단계로 넘어갈 수 있어요.</p>
-                </div>
-                <div class="grid gap-4 md:grid-cols-2">
+                <div class="question-step hidden" data-step="offcampus-location" style="flex-direction:column; gap:18px;">
                     <div>
-                        <label class="ops-label" for="naver_map_link">네이버 지도 링크</label>
-                        <input class="ops-input mt-2" id="naver_map_link" name="naver_map_link" type="url" value="{{ form_values.get('naver_map_link', '') }}" placeholder="https://map.naver.com/...">
+                        <p class="sd-eyebrow" style="margin:0;">Q3</p>
+                        <h3 style="margin:8px 0 6px; font-size:22px; font-weight:800; letter-spacing:-.02em; color:var(--sd-text-strong);">가게 위치를 알려주세요.</h3>
+                        <p class="sd-sub" style="font-size:14px;">지도 링크가 있다면 입력해주세요. 없어도 다음 단계로 넘어갈 수 있어요.</p>
                     </div>
+                    <div class="sd-grid sd-grid--fields">
+                        <div>
+                            <label class="sd-label" for="naver_map_link">네이버 지도 링크</label>
+                            <input class="sd-input" id="naver_map_link" name="naver_map_link" type="url" value="{{ form_values.get('naver_map_link', '') }}" placeholder="https://map.naver.com/...">
+                        </div>
+                        <div>
+                            <label class="sd-label" for="kakao_map_link">카카오 지도 링크</label>
+                            <input class="sd-input" id="kakao_map_link" name="kakao_map_link" type="url" value="{{ form_values.get('kakao_map_link', '') }}" placeholder="https://place.map.kakao.com/...">
+                        </div>
+                    </div>
+                    <details style="border:1px solid var(--sd-border); border-radius:14px; padding:14px 18px; background:var(--sd-bg);">
+                        <summary style="cursor:pointer; font-size:13px; font-weight:700; color:var(--sd-text-mid);">좌표를 직접 넣고 싶다면 열기</summary>
+                        <div class="sd-grid sd-grid--fields" style="margin-top:14px;">
+                            <div>
+                                <label class="sd-label" for="latitude">위도</label>
+                                <input class="sd-input" id="latitude" name="latitude" type="number" step="any" value="{{ form_values.get('latitude', '') }}">
+                            </div>
+                            <div>
+                                <label class="sd-label" for="longitude">경도</label>
+                                <input class="sd-input" id="longitude" name="longitude" type="number" step="any" value="{{ form_values.get('longitude', '') }}">
+                            </div>
+                        </div>
+                    </details>
+                    <div style="display:flex; justify-content:space-between;">
+                        <button class="sd-btn sd-btn--ghost" type="button" data-prev>← 이전</button>
+                        <button class="sd-btn sd-btn--primary" type="button" data-next>다음 →</button>
+                    </div>
+                </div>
+
+                <div class="question-step hidden" data-step="menu-change" style="flex-direction:column; gap:18px;">
                     <div>
-                        <label class="ops-label" for="kakao_map_link">카카오 지도 링크</label>
-                        <input class="ops-input mt-2" id="kakao_map_link" name="kakao_map_link" type="url" value="{{ form_values.get('kakao_map_link', '') }}" placeholder="https://place.map.kakao.com/...">
+                        <p class="sd-eyebrow" style="margin:0;">Q5</p>
+                        <h3 style="margin:8px 0 6px; font-size:22px; font-weight:800; letter-spacing:-.02em; color:var(--sd-text-strong);">식당의 메뉴가 매일 바뀌나요?</h3>
+                        <p class="sd-sub" style="font-size:14px;">매일 또는 끼니마다 메뉴가 달라지면 '예', 비교적 고정적이면 '아니요'를 선택해주세요.</p>
+                    </div>
+                    <div class="sd-grid sd-grid--choices">
+                        <label class="sd-choice" data-autonext="true">
+                            <input type="radio" name="menu_changes" value="yes" {% if menu_change_choice == 'yes' %}checked{% endif %}>
+                            <span class="t">예, 매일 또는 매끼니마다 바뀌어요</span>
+                            <span class="d">날짜나 끼니에 따라 제공 메뉴가 자주 달라져요.</span>
+                        </label>
+                        <label class="sd-choice" data-autonext="true">
+                            <input type="radio" name="menu_changes" value="no" {% if menu_change_choice == 'no' %}checked{% endif %}>
+                            <span class="t">아니요, 비교적 고정적이에요</span>
+                            <span class="d">다음 질문에서 운영 방식을 조금 더 확인할게요.</span>
+                        </label>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <button class="sd-btn sd-btn--ghost" type="button" data-prev>← 이전</button>
+                        <button class="sd-btn sd-btn--primary" type="button" data-next>다음 →</button>
                     </div>
                 </div>
-                <details class="rounded-2xl border border-base-300 bg-base-100 p-4">
-                    <summary class="cursor-pointer text-sm font-semibold text-slate-700">좌표를 직접 넣고 싶다면 열기</summary>
-                    <div class="mt-4 grid gap-4 md:grid-cols-2">
+
+                <div class="question-step hidden" data-step="menu-board" style="flex-direction:column; gap:18px;">
+                    <div>
+                        <p class="sd-eyebrow" style="margin:0;">Q6</p>
+                        <h3 style="margin:8px 0 6px; font-size:22px; font-weight:800; letter-spacing:-.02em; color:var(--sd-text-strong);">고정된 메뉴판이 있나요?</h3>
+                        <p class="sd-sub" style="font-size:14px;">손님이 메뉴판을 보고 원하는 메뉴를 골라 주문하는 식당인지 알려주세요.</p>
+                    </div>
+                    <div class="sd-grid sd-grid--choices">
+                        <label class="sd-choice" data-autonext="true">
+                            <input type="radio" name="has_fixed_menu_board" value="yes" {% if fixed_menu_choice == 'yes' %}checked{% endif %}>
+                            <span class="t">예, 고정된 메뉴판이 있어요</span>
+                            <span class="d">메뉴판을 보고 원하는 메뉴를 선택해 주문할 수 있어요.</span>
+                        </label>
+                        <label class="sd-choice" data-autonext="true">
+                            <input type="radio" name="has_fixed_menu_board" value="no" {% if fixed_menu_choice == 'no' %}checked{% endif %}>
+                            <span class="t">아니요, 정해진 한 끼 식사 형태예요</span>
+                            <span class="d">메뉴판에서 고르는 방식이 아니라, 정해진 구성으로 제공돼요.</span>
+                        </label>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <button class="sd-btn sd-btn--ghost" type="button" data-prev>← 이전</button>
+                        <button class="sd-btn sd-btn--primary" type="button" data-next>다음 →</button>
+                    </div>
+                </div>
+
+                <div class="question-step hidden" data-step="opening-time" style="flex-direction:column; gap:18px;">
+                    <div>
+                        <p class="sd-eyebrow" style="margin:0;">Q7</p>
+                        <h3 style="margin:8px 0 6px; font-size:22px; font-weight:800; letter-spacing:-.02em; color:var(--sd-text-strong);">식당의 운영 시간을 입력해주세요.</h3>
+                        <p class="sd-sub" style="font-size:14px;">먼저 식당 전체 운영 시간을 입력해주세요.</p>
+                    </div>
+                    <div class="sd-grid sd-grid--fields">
                         <div>
-                            <label class="ops-label" for="latitude">위도</label>
-                            <input class="ops-input mt-2" id="latitude" name="latitude" type="number" step="any" value="{{ form_values.get('latitude', '') }}">
+                            <label class="sd-label" for="opening_time_start">여는 시간</label>
+                            <select class="sd-select" id="opening_time_start" name="opening_time_start" required>
+                                <option value="">선택</option>
+                                {% for option in time_options %}
+                                <option value="{{ option }}" {% if form_values.get('opening_time_start') == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                         <div>
-                            <label class="ops-label" for="longitude">경도</label>
-                            <input class="ops-input mt-2" id="longitude" name="longitude" type="number" step="any" value="{{ form_values.get('longitude', '') }}">
+                            <label class="sd-label" for="opening_time_end">닫는 시간</label>
+                            <select class="sd-select" id="opening_time_end" name="opening_time_end" required>
+                                <option value="">선택</option>
+                                {% for option in time_options %}
+                                <option value="{{ option }}" {% if form_values.get('opening_time_end') == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
-                </details>
-                <div class="flex justify-between">
-                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
-                    <button class="btn btn-primary" type="button" data-next>다음</button>
-                </div>
-            </div>
-
-            <div class="question-step hidden space-y-5" data-step="menu-change">
-                <div>
-                    <p class="ops-section-title">Q5</p>
-                    <h3 class="mt-3 text-2xl font-black tracking-tight">식당의 메뉴가 매일 바뀌나요?</h3>
-                    <p class="mt-2 text-sm text-slate-600">매일 또는 끼니마다 메뉴가 달라지면 `예`, 비교적 고정적이면 `아니요`를 선택해주세요.</p>
-                </div>
-                <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                    <label class="ops-choice-card" data-autonext="true">
-                        <input class="sr-only" type="radio" name="menu_changes" value="yes" {% if menu_change_choice == 'yes' %}checked{% endif %}>
-                        <span class="block text-base font-semibold text-slate-900">예, 매일 또는 매끼니마다 바뀌어요</span>
-                        <span class="mt-1 block text-sm text-slate-500">날짜나 끼니에 따라 제공 메뉴가 자주 달라져요.</span>
-                    </label>
-                    <label class="ops-choice-card" data-autonext="true">
-                        <input class="sr-only" type="radio" name="menu_changes" value="no" {% if menu_change_choice == 'no' %}checked{% endif %}>
-                        <span class="block text-base font-semibold text-slate-900">아니요, 비교적 고정적이에요</span>
-                        <span class="mt-1 block text-sm text-slate-500">다음 질문에서 식당 운영 방식을 조금 더 확인할게요.</span>
-                    </label>
-                </div>
-                <div class="flex justify-between">
-                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
-                    <button class="btn btn-primary" type="button" data-next>다음</button>
-                </div>
-            </div>
-
-            <div class="question-step hidden space-y-5" data-step="menu-board">
-                <div>
-                    <p class="ops-section-title">Q6</p>
-                    <h3 class="mt-3 text-2xl font-black tracking-tight">고정된 메뉴판이 있나요?</h3>
-                    <p class="mt-2 text-sm text-slate-600">손님이 메뉴판을 보고 원하는 메뉴를 골라 주문하는 식당인지 알려주세요.</p>
-                </div>
-                <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                    <label class="ops-choice-card" data-autonext="true">
-                        <input class="sr-only" type="radio" name="has_fixed_menu_board" value="yes" {% if fixed_menu_choice == 'yes' %}checked{% endif %}>
-                        <span class="block text-base font-semibold text-slate-900">예, 고정된 메뉴판이 있어요</span>
-                        <span class="mt-1 block text-sm text-slate-500">메뉴판을 보고 원하는 메뉴를 선택해 주문할 수 있어요.</span>
-                    </label>
-                    <label class="ops-choice-card" data-autonext="true">
-                        <input class="sr-only" type="radio" name="has_fixed_menu_board" value="no" {% if fixed_menu_choice == 'no' %}checked{% endif %}>
-                        <span class="block text-base font-semibold text-slate-900">아니요, 정해진 한 끼 식사 형태예요</span>
-                        <span class="mt-1 block text-sm text-slate-500">메뉴판에서 고르는 방식이 아니라, 정해진 구성으로 식사가 제공돼요.</span>
-                    </label>
-                </div>
-                <div class="flex justify-between">
-                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
-                    <button class="btn btn-primary" type="button" data-next>다음</button>
-                </div>
-            </div>
-
-            <div class="question-step hidden space-y-5" data-step="opening-time">
-                <div>
-                    <p class="ops-section-title">Q7</p>
-                    <h3 class="mt-3 text-2xl font-black tracking-tight">식당의 운영 시간을 입력해주세요.</h3>
-                    <p class="mt-2 text-sm text-slate-600">먼저 식당 전체 운영 시간을 입력해주세요.</p>
-                </div>
-                <div class="grid gap-4 md:grid-cols-2">
-                    <div class="form-control gap-2">
-                        <label class="ops-label" for="opening_time_start">여는 시간</label>
-                        <select class="ops-select" id="opening_time_start" name="opening_time_start" required>
-                            <option value="">선택</option>
-                            {% for option in time_options %}
-                            <option value="{{ option }}" {% if form_values.get('opening_time_start') == option %}selected{% endif %}>{{ option }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-control gap-2">
-                        <label class="ops-label" for="opening_time_end">닫는 시간</label>
-                        <select class="ops-select" id="opening_time_end" name="opening_time_end" required>
-                            <option value="">선택</option>
-                            {% for option in time_options %}
-                            <option value="{{ option }}" {% if form_values.get('opening_time_end') == option %}selected{% endif %}>{{ option }}</option>
-                            {% endfor %}
-                        </select>
+                    <div style="display:flex; justify-content:space-between;">
+                        <button class="sd-btn sd-btn--ghost" type="button" data-prev>← 이전</button>
+                        <button class="sd-btn sd-btn--primary" type="button" data-next>다음 →</button>
                     </div>
                 </div>
-                <div class="flex justify-between">
-                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
-                    <button class="btn btn-primary" type="button" data-next>다음</button>
-                </div>
-            </div>
 
-            <div class="question-step hidden space-y-5" data-step="meal-times">
-                <div>
-                    <p class="ops-section-title">Q8</p>
-                    <h3 class="mt-3 text-2xl font-black tracking-tight">제공하는 식사 종류를 선택해주세요.</h3>
-                    <p class="mt-2 text-sm text-slate-600">식사별 운영 시간을 따로 관리한다면 선택하고, 아니면 전체 운영시간만 사용할게요.</p>
-                </div>
-                <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {% for meal_key, meal_label in [('breakfast', '아침'), ('lunch', '점심'), ('dinner', '저녁')] %}
-                    <label class="ops-choice-card">
-                        <input class="sr-only" type="checkbox" name="meal_types" value="{{ meal_key }}" {% if meal_key == 'breakfast' and (form_values.get('breakfast_time_start') or form_values.get('breakfast_time_end')) %}checked{% endif %}{% if meal_key == 'lunch' and (form_values.get('lunch_time_start') or form_values.get('lunch_time_end')) %}checked{% endif %}{% if meal_key == 'dinner' and (form_values.get('dinner_time_start') or form_values.get('dinner_time_end')) %}checked{% endif %}>
-                        <span class="block text-base font-semibold text-slate-900">{{ meal_label }}</span>
-                    </label>
-                    {% endfor %}
-                    <button class="btn btn-outline sm:col-span-2 xl:col-span-1" type="button" id="meal-types-opening-only">구분하지 않아요</button>
-                    <input id="meal_types_choice" name="meal_types_choice" type="hidden" value="{{ meal_types_choice }}">
-                </div>
-                <div id="meal-time-fields" class="grid gap-5 md:grid-cols-2 {% if meal_types_choice != 'custom' %}hidden{% endif %}">
-                    <div class="ops-card border border-base-200 bg-base-100 {% if not (form_values.get('breakfast_time_start') or form_values.get('breakfast_time_end')) %}hidden{% endif %}" data-meal-block="breakfast">
-                        <div class="card-body gap-3 p-4">
-                            <h4 class="font-bold text-slate-900">아침 운영 시간</h4>
-                            <select class="ops-select" id="breakfast_time_start" name="breakfast_time_start">
+                <div class="question-step hidden" data-step="meal-times" style="flex-direction:column; gap:18px;">
+                    <div>
+                        <p class="sd-eyebrow" style="margin:0;">Q8</p>
+                        <h3 style="margin:8px 0 6px; font-size:22px; font-weight:800; letter-spacing:-.02em; color:var(--sd-text-strong);">제공하는 식사 종류를 선택해주세요.</h3>
+                        <p class="sd-sub" style="font-size:14px;">식사별 운영 시간을 따로 관리한다면 선택하고, 아니면 전체 운영시간만 사용할게요.</p>
+                    </div>
+                    <div class="sd-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px;">
+                        {% for meal_key, meal_label in [('breakfast', '아침'), ('lunch', '점심'), ('dinner', '저녁')] %}
+                        <label class="sd-choice">
+                            <input type="checkbox" name="meal_types" value="{{ meal_key }}" {% if meal_key == 'breakfast' and (form_values.get('breakfast_time_start') or form_values.get('breakfast_time_end')) %}checked{% endif %}{% if meal_key == 'lunch' and (form_values.get('lunch_time_start') or form_values.get('lunch_time_end')) %}checked{% endif %}{% if meal_key == 'dinner' and (form_values.get('dinner_time_start') or form_values.get('dinner_time_end')) %}checked{% endif %}>
+                            <span class="t">{{ meal_label }}</span>
+                        </label>
+                        {% endfor %}
+                        <button class="sd-btn sd-btn--ghost" type="button" id="meal-types-opening-only">구분하지 않아요</button>
+                        <input id="meal_types_choice" name="meal_types_choice" type="hidden" value="{{ meal_types_choice }}">
+                    </div>
+                    <div id="meal-time-fields" class="sd-grid sd-grid--fields {% if meal_types_choice != 'custom' %}hidden{% endif %}">
+                        {% for meal_key, meal_label in [('breakfast', '아침'), ('lunch', '점심'), ('dinner', '저녁')] %}
+                        <div class="{% if not (form_values.get(meal_key ~ '_time_start') or form_values.get(meal_key ~ '_time_end')) %}hidden{% endif %}" data-meal-block="{{ meal_key }}" style="background:var(--sd-bg); border:1px solid var(--sd-border); border-radius:14px; padding:16px;">
+                            <h4 style="margin:0 0 10px; font-size:14px; color:var(--sd-text-strong);">{{ meal_label }} 운영 시간</h4>
+                            <select class="sd-select" id="{{ meal_key }}_time_start" name="{{ meal_key }}_time_start" style="margin-top:0;">
                                 <option value="">시작 선택</option>
                                 {% for option in time_options %}
-                                <option value="{{ option }}" {% if form_values.get('breakfast_time_start') == option %}selected{% endif %}>{{ option }}</option>
+                                <option value="{{ option }}" {% if form_values.get(meal_key ~ '_time_start') == option %}selected{% endif %}>{{ option }}</option>
                                 {% endfor %}
                             </select>
-                            <select class="ops-select" id="breakfast_time_end" name="breakfast_time_end">
+                            <select class="sd-select" id="{{ meal_key }}_time_end" name="{{ meal_key }}_time_end">
                                 <option value="">종료 선택</option>
                                 {% for option in time_options %}
-                                <option value="{{ option }}" {% if form_values.get('breakfast_time_end') == option %}selected{% endif %}>{{ option }}</option>
+                                <option value="{{ option }}" {% if form_values.get(meal_key ~ '_time_end') == option %}selected{% endif %}>{{ option }}</option>
                                 {% endfor %}
                             </select>
                         </div>
+                        {% endfor %}
                     </div>
-                    <div class="ops-card border border-base-200 bg-base-100 {% if not (form_values.get('lunch_time_start') or form_values.get('lunch_time_end')) %}hidden{% endif %}" data-meal-block="lunch">
-                        <div class="card-body gap-3 p-4">
-                            <h4 class="font-bold text-slate-900">점심 운영 시간</h4>
-                            <select class="ops-select" id="lunch_time_start" name="lunch_time_start">
-                                <option value="">시작 선택</option>
-                                {% for option in time_options %}
-                                <option value="{{ option }}" {% if form_values.get('lunch_time_start') == option %}selected{% endif %}>{{ option }}</option>
-                                {% endfor %}
-                            </select>
-                            <select class="ops-select" id="lunch_time_end" name="lunch_time_end">
-                                <option value="">종료 선택</option>
-                                {% for option in time_options %}
-                                <option value="{{ option }}" {% if form_values.get('lunch_time_end') == option %}selected{% endif %}>{{ option }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="ops-card border border-base-200 bg-base-100 {% if not (form_values.get('dinner_time_start') or form_values.get('dinner_time_end')) %}hidden{% endif %}" data-meal-block="dinner">
-                        <div class="card-body gap-3 p-4">
-                            <h4 class="font-bold text-slate-900">저녁 운영 시간</h4>
-                            <select class="ops-select" id="dinner_time_start" name="dinner_time_start">
-                                <option value="">시작 선택</option>
-                                {% for option in time_options %}
-                                <option value="{{ option }}" {% if form_values.get('dinner_time_start') == option %}selected{% endif %}>{{ option }}</option>
-                                {% endfor %}
-                            </select>
-                            <select class="ops-select" id="dinner_time_end" name="dinner_time_end">
-                                <option value="">종료 선택</option>
-                                {% for option in time_options %}
-                                <option value="{{ option }}" {% if form_values.get('dinner_time_end') == option %}selected{% endif %}>{{ option }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <button class="sd-btn sd-btn--ghost" type="button" data-prev>← 이전</button>
+                        <button class="sd-btn sd-btn--primary" type="button" data-next>다음 →</button>
                     </div>
                 </div>
-                <div class="flex justify-between">
-                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
-                    <button class="btn btn-primary" type="button" data-next>다음</button>
-                </div>
-            </div>
 
-            <div class="question-step hidden space-y-5" data-step="breaktime">
-                <div>
-                    <p class="ops-section-title">Q8</p>
-                    <h3 class="mt-3 text-2xl font-black tracking-tight">브레이크 타임이 있나요?</h3>
-                    <p class="mt-2 text-sm text-slate-600">브레이크 타임이 있다면 입력하고, 없다면 그대로 넘어가면 됩니다.</p>
-                </div>
-                <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                    <label class="ops-choice-card" data-autonext="true">
-                        <input class="sr-only" type="radio" name="has_break_time" value="yes" {% if has_break_choice == 'yes' %}checked{% endif %}>
-                        <span class="block text-base font-semibold text-slate-900">예, 브레이크 타임이 있어요</span>
-                    </label>
-                    <label class="ops-choice-card" data-autonext="true">
-                        <input class="sr-only" type="radio" name="has_break_time" value="no" {% if has_break_choice == 'no' %}checked{% endif %}>
-                        <span class="block text-base font-semibold text-slate-900">아니요, 쉬지 않고 운영해요</span>
-                    </label>
-                </div>
-                <div id="break-time-wrap" class="grid gap-4 md:grid-cols-2 hidden">
-                    <div class="form-control gap-2">
-                        <label class="ops-label" for="break_time_start">브레이크 시작</label>
-                        <select class="ops-select" id="break_time_start" name="break_time_start">
-                            <option value="">선택 안 함</option>
-                            {% for option in time_options %}
-                            <option value="{{ option }}" {% if form_values.get('break_time_start') == option %}selected{% endif %}>{{ option }}</option>
-                            {% endfor %}
-                        </select>
+                <div class="question-step hidden" data-step="breaktime" style="flex-direction:column; gap:18px;">
+                    <div>
+                        <p class="sd-eyebrow" style="margin:0;">Q8</p>
+                        <h3 style="margin:8px 0 6px; font-size:22px; font-weight:800; letter-spacing:-.02em; color:var(--sd-text-strong);">브레이크 타임이 있나요?</h3>
+                        <p class="sd-sub" style="font-size:14px;">브레이크 타임이 있다면 입력하고, 없다면 그대로 넘어가면 됩니다.</p>
                     </div>
-                    <div class="form-control gap-2">
-                        <label class="ops-label" for="break_time_end">브레이크 종료</label>
-                        <select class="ops-select" id="break_time_end" name="break_time_end">
-                            <option value="">선택 안 함</option>
-                            {% for option in time_options %}
-                            <option value="{{ option }}" {% if form_values.get('break_time_end') == option %}selected{% endif %}>{{ option }}</option>
-                            {% endfor %}
-                        </select>
+                    <div class="sd-grid sd-grid--choices">
+                        <label class="sd-choice" data-autonext="true">
+                            <input type="radio" name="has_break_time" value="yes" {% if has_break_choice == 'yes' %}checked{% endif %}>
+                            <span class="t">예, 브레이크 타임이 있어요</span>
+                        </label>
+                        <label class="sd-choice" data-autonext="true">
+                            <input type="radio" name="has_break_time" value="no" {% if has_break_choice == 'no' %}checked{% endif %}>
+                            <span class="t">아니요, 쉬지 않고 운영해요</span>
+                        </label>
                     </div>
-                </div>
-                <div class="flex justify-between">
-                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
-                    <button class="btn btn-primary" type="button" data-next>다음</button>
-                </div>
-            </div>
-
-            <div class="question-step hidden space-y-5" data-step="price">
-                <div>
-                    <p class="ops-section-title">Q9</p>
-                    <h3 class="mt-3 text-2xl font-black tracking-tight">가격 정보를 입력해주세요.</h3>
-                    <p id="price-question-help" class="mt-2 text-sm text-slate-600">가격이 정해져 있는지 알려주시고, 필요하면 금액도 입력해주세요.</p>
-                </div>
-                <div id="price-choice-wrap" class="mt-4 grid gap-4 sm:grid-cols-2">
-                    <label class="ops-choice-card" data-autonext="true">
-                        <input class="sr-only" type="radio" name="has_fixed_price" value="yes" {% if has_fixed_price_choice == 'yes' %}checked{% endif %}>
-                        <span class="block text-base font-semibold text-slate-900">예, 정해져 있어요</span>
-                            <span class="mt-1 block text-sm text-slate-500">보통 내는 1인 가격이 정해져 있다면 입력합니다.</span>
-                    </label>
-                    <label class="ops-choice-card" data-autonext="true">
-                        <input class="sr-only" type="radio" name="has_fixed_price" value="no" {% if has_fixed_price_choice == 'no' %}checked{% endif %}>
-                        <span class="block text-base font-semibold text-slate-900">아니요, 메뉴마다 달라요</span>
-                            <span class="mt-1 block text-sm text-slate-500">메뉴마다 다르거나 자주 변하면 이렇게 선택하세요.</span>
-                    </label>
-                </div>
-                <div id="price-wrap" class="hidden">
-                    <label class="ops-label" for="price">1인 가격(원)</label>
-                    <input class="ops-input mt-2" id="price" name="price" type="number" min="1" step="1" value="{{ form_values.get('price', '') }}" placeholder="예: 7000">
-                    <p id="price-help" class="mt-2 text-xs text-slate-500">정해진 가격이 있을 때만 입력하세요.</p>
-                </div>
-                <div class="flex justify-between">
-                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
-                    <button class="btn btn-primary" type="button" data-next>다음</button>
-                </div>
-            </div>
-
-            <div class="question-step hidden space-y-5" data-step="submit">
-                <div>
-                    <p class="ops-section-title">완료 전 확인</p>
-                    <h3 class="mt-3 text-2xl font-black tracking-tight">입력한 내용을 검토하고 제출해주세요.</h3>
-                    <p class="mt-2 text-sm text-slate-600">입력한 내용을 한 번 확인한 뒤 제출해주세요. 제출 후 상태는 목록과 상세 화면에서 볼 수 있습니다.</p>
-                </div>
-                <section class="ops-review-card">
-                    <div class="ops-review-hero">
+                    <div id="break-time-wrap" class="sd-grid sd-grid--fields hidden">
                         <div>
-                            <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">핵심 요약</p>
-                            <h4 class="mt-2 text-xl font-black text-slate-950" data-summary="name">{{ form_values.get('name', '-') }}</h4>
-                            <p class="mt-2 text-sm text-slate-600">제출 전에 식당 이름, 유형, 운영 방식이 맞는지만 먼저 확인해주세요.</p>
-                        </div>
-                        <span class="badge badge-primary badge-outline text-sm" data-summary="type">{{ form_values.get('establishment_type', '-') }}</span>
-                    </div>
-                </section>
-                <details class="ops-review-details text-sm text-slate-600">
-                    <summary class="ops-review-summary">세부내용 더보기</summary>
-                    <div class="mt-5 grid gap-5 md:grid-cols-2">
-                        <div>
-                            <p class="font-semibold text-slate-900">기본 정보</p>
-                            <dl class="ops-review-list mt-3 space-y-2">
-                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">식당 이름</dt><dd data-summary="detail-name">{{ form_values.get('name', '-') }}</dd></div>
-                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">교내/교외</dt><dd data-summary="detail-campus">{% if campus_choice == 'campus' %}교내{% elif campus_choice == 'offcampus' %}교외{% else %}-{% endif %}</dd></div>
-                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">건물</dt><dd data-summary="detail-building">{{ form_values.get('building', '-') or '-' }}</dd></div>
-                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">네이버 지도 링크</dt><dd class="break-all" data-summary="detail-naver">{{ form_values.get('naver_map_link', '-') or '-' }}</dd></div>
-                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">카카오 지도 링크</dt><dd class="break-all" data-summary="detail-kakao">{{ form_values.get('kakao_map_link', '-') or '-' }}</dd></div>
-                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">위도/경도</dt><dd data-summary="detail-coordinates">{% if form_values.get('latitude') or form_values.get('longitude') %}{{ form_values.get('latitude', '-') or '-' }} / {{ form_values.get('longitude', '-') or '-' }}{% else %}-{% endif %}</dd></div>
-                            </dl>
+                            <label class="sd-label" for="break_time_start">브레이크 시작</label>
+                            <select class="sd-select" id="break_time_start" name="break_time_start">
+                                <option value="">선택 안 함</option>
+                                {% for option in time_options %}
+                                <option value="{{ option }}" {% if form_values.get('break_time_start') == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                         <div>
-                            <p class="font-semibold text-slate-900">운영/가격 정보</p>
-                            <dl class="ops-review-list mt-3 space-y-2">
-                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">유형</dt><dd><span data-summary="type-detail">{{ form_values.get('establishment_type', '-') }}</span></dd></div>
-                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">운영 시간</dt><dd data-summary="detail-opening">{{ form_values.get('opening_time_start', '-') or '-' }} ~ {{ form_values.get('opening_time_end', '-') or '-' }}</dd></div>
-                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">아침 시간</dt><dd data-summary="detail-breakfast">{% if form_values.get('breakfast_time_start') or form_values.get('breakfast_time_end') %}{{ form_values.get('breakfast_time_start', '-') or '-' }} ~ {{ form_values.get('breakfast_time_end', '-') or '-' }}{% else %}-{% endif %}</dd></div>
-                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">점심 시간</dt><dd data-summary="detail-lunch">{% if form_values.get('lunch_time_start') or form_values.get('lunch_time_end') %}{{ form_values.get('lunch_time_start', '-') or '-' }} ~ {{ form_values.get('lunch_time_end', '-') or '-' }}{% else %}-{% endif %}</dd></div>
-                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">저녁 시간</dt><dd data-summary="detail-dinner">{% if form_values.get('dinner_time_start') or form_values.get('dinner_time_end') %}{{ form_values.get('dinner_time_start', '-') or '-' }} ~ {{ form_values.get('dinner_time_end', '-') or '-' }}{% else %}-{% endif %}</dd></div>
-                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">브레이크 타임</dt><dd data-summary="detail-break">{% if form_values.get('break_time_start') or form_values.get('break_time_end') %}{{ form_values.get('break_time_start', '-') or '-' }} ~ {{ form_values.get('break_time_end', '-') or '-' }}{% else %}없음 또는 미입력{% endif %}</dd></div>
-                                <div><dt class="text-xs uppercase tracking-[0.16em] text-slate-400">1인 가격</dt><dd data-summary="detail-price">{% if form_values.get('price') %}{{ form_values.get('price') }}원{% else %}미입력{% endif %}</dd></div>
-                            </dl>
+                            <label class="sd-label" for="break_time_end">브레이크 종료</label>
+                            <select class="sd-select" id="break_time_end" name="break_time_end">
+                                <option value="">선택 안 함</option>
+                                {% for option in time_options %}
+                                <option value="{{ option }}" {% if form_values.get('break_time_end') == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
-                </details>
-                <div class="flex flex-col-reverse justify-end gap-3 sm:flex-row sm:justify-between">
-                    <button class="btn btn-ghost" type="button" data-prev>이전</button>
-                    <div class="flex flex-col-reverse gap-3 sm:flex-row">
-                        <a class="btn btn-ghost" href="{{ request.url_for('owner_requests_page') }}">취소</a>
-                        <button class="btn btn-primary" type="submit">
-                            <span class="htmx-indicator loading loading-spinner loading-sm"></span>
-                            등록 요청 제출
-                        </button>
+                    <div style="display:flex; justify-content:space-between;">
+                        <button class="sd-btn sd-btn--ghost" type="button" data-prev>← 이전</button>
+                        <button class="sd-btn sd-btn--primary" type="button" data-next>다음 →</button>
+                    </div>
+                </div>
+
+                <div class="question-step hidden" data-step="price" style="flex-direction:column; gap:18px;">
+                    <div>
+                        <p class="sd-eyebrow" style="margin:0;">Q9</p>
+                        <h3 style="margin:8px 0 6px; font-size:22px; font-weight:800; letter-spacing:-.02em; color:var(--sd-text-strong);">가격 정보를 입력해주세요.</h3>
+                        <p class="sd-sub" style="font-size:14px;" id="price-question-help">가격이 정해져 있는지 알려주시고, 필요하면 금액도 입력해주세요.</p>
+                    </div>
+                    <div id="price-choice-wrap" class="sd-grid sd-grid--choices">
+                        <label class="sd-choice" data-autonext="true">
+                            <input type="radio" name="has_fixed_price" value="yes" {% if has_fixed_price_choice == 'yes' %}checked{% endif %}>
+                            <span class="t">예, 정해져 있어요</span>
+                            <span class="d">보통 내는 1인 가격이 정해져 있다면 입력합니다.</span>
+                        </label>
+                        <label class="sd-choice" data-autonext="true">
+                            <input type="radio" name="has_fixed_price" value="no" {% if has_fixed_price_choice == 'no' %}checked{% endif %}>
+                            <span class="t">아니요, 메뉴마다 달라요</span>
+                            <span class="d">메뉴마다 다르거나 자주 변하면 이렇게 선택하세요.</span>
+                        </label>
+                    </div>
+                    <div id="price-wrap" class="hidden">
+                        <label class="sd-label" for="price">1인 가격(원)</label>
+                        <input class="sd-input" id="price" name="price" type="number" min="1" step="1" value="{{ form_values.get('price', '') }}" placeholder="예: 7000">
+                        <p class="sd-help" id="price-help">정해진 가격이 있을 때만 입력하세요.</p>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <button class="sd-btn sd-btn--ghost" type="button" data-prev>← 이전</button>
+                        <button class="sd-btn sd-btn--primary" type="button" data-next>다음 →</button>
+                    </div>
+                </div>
+
+                <div class="question-step hidden" data-step="submit" style="flex-direction:column; gap:18px;">
+                    <div class="sd-speech">
+                        <img src="{{ request.url_for('static', path='img/sandol-logo.png') }}" alt="산돌이">
+                        <span class="msg"><b>이대로 제출할까요?</b> 마지막으로 한 번만 확인해주세요!</span>
+                    </div>
+                    <section style="background:var(--sd-bg); border:1px solid var(--sd-border); border-radius:16px; padding:20px 24px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                            <span style="font-family:var(--sd-point); font-size:20px; color:#283149;" data-summary="name">{{ form_values.get('name', '-') }}</span>
+                            <span class="sd-badge sd-badge--info" data-summary="type">{{ form_values.get('establishment_type', '-') }}</span>
+                        </div>
+                        <dl style="margin:14px 0 0;">
+                            <div class="sd-kv"><dt>교내/교외</dt><dd data-summary="detail-campus">{% if campus_choice == 'campus' %}교내{% elif campus_choice == 'offcampus' %}교외{% else %}-{% endif %}</dd></div>
+                            <div class="sd-kv"><dt>건물</dt><dd data-summary="detail-building">{{ form_values.get('building', '-') or '-' }}</dd></div>
+                            <div class="sd-kv"><dt>네이버 지도</dt><dd data-summary="detail-naver">{{ form_values.get('naver_map_link', '-') or '-' }}</dd></div>
+                            <div class="sd-kv"><dt>카카오 지도</dt><dd data-summary="detail-kakao">{{ form_values.get('kakao_map_link', '-') or '-' }}</dd></div>
+                            <div class="sd-kv"><dt>위도/경도</dt><dd data-summary="detail-coordinates">{% if form_values.get('latitude') or form_values.get('longitude') %}{{ form_values.get('latitude', '-') or '-' }} / {{ form_values.get('longitude', '-') or '-' }}{% else %}-{% endif %}</dd></div>
+                            <div class="sd-kv"><dt>운영 시간</dt><dd data-summary="detail-opening">{{ form_values.get('opening_time_start', '-') or '-' }} ~ {{ form_values.get('opening_time_end', '-') or '-' }}</dd></div>
+                            <div class="sd-kv"><dt>아침 시간</dt><dd data-summary="detail-breakfast">{% if form_values.get('breakfast_time_start') or form_values.get('breakfast_time_end') %}{{ form_values.get('breakfast_time_start', '-') or '-' }} ~ {{ form_values.get('breakfast_time_end', '-') or '-' }}{% else %}-{% endif %}</dd></div>
+                            <div class="sd-kv"><dt>점심 시간</dt><dd data-summary="detail-lunch">{% if form_values.get('lunch_time_start') or form_values.get('lunch_time_end') %}{{ form_values.get('lunch_time_start', '-') or '-' }} ~ {{ form_values.get('lunch_time_end', '-') or '-' }}{% else %}-{% endif %}</dd></div>
+                            <div class="sd-kv"><dt>저녁 시간</dt><dd data-summary="detail-dinner">{% if form_values.get('dinner_time_start') or form_values.get('dinner_time_end') %}{{ form_values.get('dinner_time_start', '-') or '-' }} ~ {{ form_values.get('dinner_time_end', '-') or '-' }}{% else %}-{% endif %}</dd></div>
+                            <div class="sd-kv"><dt>브레이크 타임</dt><dd data-summary="detail-break">{% if form_values.get('break_time_start') or form_values.get('break_time_end') %}{{ form_values.get('break_time_start', '-') or '-' }} ~ {{ form_values.get('break_time_end', '-') or '-' }}{% else %}없음 또는 미입력{% endif %}</dd></div>
+                            <div class="sd-kv"><dt>1인 가격</dt><dd data-summary="detail-price">{% if form_values.get('price') %}{{ form_values.get('price') }}원{% else %}미입력{% endif %}</dd></div>
+                        </dl>
+                    </section>
+                    <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px;">
+                        <button class="sd-btn sd-btn--ghost" type="button" data-prev>← 이전</button>
+                        <div class="sd-actions">
+                            <a class="sd-btn sd-btn--ghost" href="{{ request.url_for('owner_requests_page') }}">취소</a>
+                            <button class="sd-btn sd-btn--primary" type="submit">등록 요청 제출 🐾</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
-</form>
+        </section>
+    </form>
+</div>
 
 <script>
 const initializeOwnerRequestFlow = (root = document) => {
@@ -460,7 +403,6 @@ const initializeOwnerRequestFlow = (root = document) => {
     const openingOnlyButton = document.getElementById('meal-types-opening-only');
     const nameSummary = document.querySelector('[data-summary="name"]');
     const typeSummary = document.querySelector('[data-summary="type"]');
-    const detailNameSummary = document.querySelector('[data-summary="detail-name"]');
     const detailCampusSummary = document.querySelector('[data-summary="detail-campus"]');
     const detailBuildingSummary = document.querySelector('[data-summary="detail-building"]');
     const detailNaverSummary = document.querySelector('[data-summary="detail-naver"]');
@@ -495,9 +437,7 @@ const initializeOwnerRequestFlow = (root = document) => {
     const visibleSteps = () => {
         const campus = selectedValue('campus_choice');
         const menuChanges = selectedValue('menu_changes');
-        const fixedMenu = selectedValue('has_fixed_menu_board');
         const type = typeInput?.value || '';
-        const mealTypesChoice = mealTypesChoiceInput?.value || '';
 
         const ordered = ['name', 'campus'];
         if (campus === 'campus') {
@@ -565,7 +505,7 @@ const initializeOwnerRequestFlow = (root = document) => {
         setHidden(mealTimeFields, mealTypesChoiceInput?.value !== 'custom');
         mealBlocks.forEach((block) => {
             const meal = block.getAttribute('data-meal-block');
-            const visible = meal === 'breakfast' ? selectedMeals.includes('breakfast') : meal === 'lunch' ? selectedMeals.includes('lunch') : meal === 'dinner' ? selectedMeals.includes('dinner') : false;
+            const visible = selectedMeals.includes(meal);
             setHidden(block, !visible);
         });
 
@@ -588,7 +528,6 @@ const initializeOwnerRequestFlow = (root = document) => {
         if (typeSummary) {
             typeSummary.textContent = labelForType(type);
         }
-        setText(detailNameSummary, valueOf('name') || '-');
         setText(detailCampusSummary, campus === 'campus' ? '교내' : campus === 'offcampus' ? '교외' : '-');
         setText(detailBuildingSummary, valueOf('building') || '-');
         setText(detailNaverSummary, valueOf('naver_map_link') || '-');
@@ -621,7 +560,6 @@ const initializeOwnerRequestFlow = (root = document) => {
                 if (campus !== 'campus') return true;
                 return selectedValue('building_choice') !== '' && (selectedValue('building_choice') !== 'custom' || valueOf('building') !== '');
             case 'offcampus-location':
-                if (campus !== 'offcampus') return true;
                 return true;
             case 'menu-change':
                 return menuChanges !== '';
@@ -630,7 +568,7 @@ const initializeOwnerRequestFlow = (root = document) => {
                 return fixedMenu !== '';
             case 'opening-time':
                 return valueOf('opening_time_start') !== '' && valueOf('opening_time_end') !== '';
-            case 'meal-times':
+            case 'meal-times': {
                 if (type !== 'variable_korean_buffet') return true;
                 if (mealTypesChoice === 'opening_only') return true;
                 if (selectedMeals.length === 0) return false;
@@ -640,6 +578,7 @@ const initializeOwnerRequestFlow = (root = document) => {
                     dinner: valueOf('dinner_time_start') !== '' && valueOf('dinner_time_end') !== '',
                 };
                 return selectedMeals.every((meal) => pairs[meal] ?? true);
+            }
             case 'breaktime':
                 if (type === 'variable_korean_buffet') return true;
                 if (hasBreak === 'no') return true;
@@ -670,6 +609,7 @@ const initializeOwnerRequestFlow = (root = document) => {
         steps.forEach((step) => {
             const visible = step.dataset.step === activeStep;
             step.classList.toggle('hidden', !visible);
+            if (visible) step.style.display = 'flex';
         });
         const progressIndex = Math.max(order.indexOf(activeStep), 0) + 1;
         if (progress) {
@@ -696,7 +636,7 @@ const initializeOwnerRequestFlow = (root = document) => {
         input.addEventListener('change', syncStepView);
         input.addEventListener('input', syncStepView);
     });
-    root.querySelectorAll('.ops-choice-card[data-autonext="true"]').forEach((card) => {
+    root.querySelectorAll('.sd-choice[data-autonext="true"]').forEach((card) => {
         card.addEventListener('click', () => {
             const input = card.querySelector('input[type="radio"]');
             if (!(input instanceof HTMLInputElement)) {

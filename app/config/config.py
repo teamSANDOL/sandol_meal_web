@@ -14,7 +14,7 @@ SERVICE_DIR = CONFIG_DIR.parent.parent
 TEMPLATE_DIR = SERVICE_DIR / "app" / "templates"
 STATIC_DIR = SERVICE_DIR / "app" / "static"
 TMP_DIR = SERVICE_DIR / "tmp"
-_ = TMP_DIR.mkdir(exist_ok=True)
+TMP_DIR.mkdir(exist_ok=True)
 
 logger = logging.getLogger("sandol_meal_web")
 logger.setLevel(logging.DEBUG)
@@ -94,4 +94,5 @@ class Config:
         UNAUTHORIZED: int = 401
         FORBIDDEN: int = 403
         NOT_FOUND: int = 404
+        METHOD_NOT_ALLOWED: int = 405
         INTERNAL_SERVER_ERROR: int = 500

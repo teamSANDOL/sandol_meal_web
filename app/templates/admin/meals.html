@@ -1,103 +1,106 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Meals - Sandol Meal Web{% endblock %}
+{% block title %}식단 관리 - 산돌이 학식 콘솔{% endblock %}
 
 {% block content %}
-<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-    <div>
-        <p class="ops-section-title">Admin</p>
-        <h1 class="mt-2 text-3xl font-black tracking-tight">전체 식단 기록 관리</h1>
-        <p class="mt-2 text-sm text-slate-600">저장된 모든 식단 기록을 확인하고 수정 화면으로 이동할 수 있습니다.</p>
+{% set meal_type_class = {'아침': 'sd-badge--pending', '브런치': 'sd-badge--pending', '점심': 'sd-badge--info', '저녁': 'sd-badge--neutral'} %}
+<div class="sd-main">
+    <div class="sd-page-head">
+        <div>
+            <div class="sd-eyebrow">ADMIN</div>
+            <h1 class="sd-title">식단 관리</h1>
+            <p class="sd-sub">모든 식당의 식단을 제공일 기준으로 확인하고 관리해요.</p>
+        </div>
+        <div class="sd-actions">
+            {# A8: 강제 동기화 — POST /meals/meal_sync #}
+            <form method="post" action="{{ request.url_for('admin_meal_sync') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="sd-btn sd-btn--ghost sd-btn--sm" type="submit">🔄 강제 동기화</button>
+            </form>
+            <a class="sd-btn sd-btn--primary" href="{{ request.url_for('admin_new_meal_page') }}">🍚 새 식단 등록</a>
+        </div>
     </div>
-    <div class="flex flex-wrap gap-2">
-        <a class="btn btn-primary" href="{{ request.url_for('admin_new_meal_page') }}">새 식단 등록</a>
-        <a class="btn btn-outline" href="{{ request.url_for('admin_restaurants_page') }}">등록 식당 관리</a>
-    </div>
-</div>
 
-{% if success_message %}
-<div class="alert alert-success mb-4"><span>완료: {{ success_message }}</span></div>
-{% endif %}
+    {% if success_message %}<div class="sd-alert sd-alert--success">{{ success_message }}</div>{% endif %}
+    {% if error_message %}<div class="sd-alert sd-alert--error">{{ error_message }}</div>{% endif %}
 
-{% if error_message %}
-<div class="alert alert-error mb-4"><span>오류: {{ error_message }}</span></div>
-{% endif %}
-
-{% if meals %}
-<div class="ops-card">
-    <div class="ops-mobile-list p-4 md:hidden">
-        {% for meal in meals %}
-        <article class="ops-mobile-item">
-            <div class="flex items-start justify-between gap-3">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Meal #{{ meal.get("id", "") }}</p>
-                    <h2 class="mt-2 text-lg font-bold text-slate-950">{{ meal.get("restaurant_name", "") }}</h2>
-                </div>
-                <span class="badge badge-outline">{{ meal.get("meal_type", "") }}</span>
-            </div>
-            <div class="ops-mobile-meta">
-                <p><strong>등록 시각</strong><br>{{ meal.get("registered_at", "") }}</p>
-                <p><strong>수정 시각</strong><br>{{ meal.get("updated_at", "") }}</p>
-                <p><strong>메뉴</strong><br>{{ meal.get("menu", [])|join(', ') }}</p>
-            </div>
-            <div class="mt-4 flex gap-2">
-                <a class="btn btn-sm btn-ghost flex-1" href="{{ request.url_for('admin_edit_meal_page', meal_id=meal.get('id')) }}">수정</a>
-            </div>
-        </article>
-        {% endfor %}
-    </div>
-    <div class="overflow-x-auto">
-        <table class="table table-zebra hidden md:table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>식당명</th>
-                    <th>식사 유형</th>
-                    <th>메뉴</th>
-                    <th>등록 시각</th>
-                    <th>수정 시각</th>
-                    <th class="text-right">작업</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for meal in meals %}
-                <tr>
-                    <td class="font-mono text-xs text-slate-500">{{ meal.get("id", "") }}</td>
-                    <td class="font-semibold">{{ meal.get("restaurant_name", "") }}</td>
-                    <td>{{ meal.get("meal_type", "") }}</td>
-                    <td class="text-sm text-slate-600">{{ meal.get("menu", [])|join(', ') }}</td>
-                    <td class="text-sm text-slate-600">{{ meal.get("registered_at", "") }}</td>
-                    <td class="text-sm text-slate-600">{{ meal.get("updated_at", "") }}</td>
-                    <td class="text-right">
-                        <a class="btn btn-ghost btn-sm" href="{{ request.url_for('admin_edit_meal_page', meal_id=meal.get('id')) }}">수정</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% set current_page = pagination_meta.get('page', 1) %}
-{% set has_prev = pagination_meta.get('has_prev', false) %}
-{% set has_next = pagination_meta.get('has_next', false) %}
-<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-    <p class="text-sm text-slate-500">페이지 {{ current_page }} · 총 {{ pagination_meta.get('total', meals|length) }}건</p>
-    <div class="flex gap-2">
-        {% if has_prev %}
-        <a class="btn btn-sm btn-ghost" href="{{ request.url_for('admin_meals_page') }}?page={{ current_page - 1 }}">이전</a>
+    {# A3: 식당명 부분 일치 + 끼니 필터 — GET /meals?restaurant_name=&meal_type= #}
+    <form class="sd-card sd-card--tight" style="margin-bottom:20px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;" method="get" action="{{ request.url_for('admin_meals_page') }}">
+        <input class="sd-input" type="search" name="restaurant_name" value="{{ restaurant_name_filter or '' }}" placeholder="🔍 식당명 검색 (부분 일치)" style="flex:1; min-width:180px; margin-top:0;">
+        <select class="sd-select" name="meal_type" style="width:auto; margin-top:0;">
+            <option value="">모든 끼니</option>
+            {% for key, label in [('breakfast', '아침'), ('brunch', '브런치'), ('lunch', '점심'), ('dinner', '저녁')] %}
+            <option value="{{ key }}" {{ 'selected' if meal_type_filter == key }}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <input class="sd-input" type="date" name="start_date" aria-label="식단 시작일" value="{{ start_date or '' }}" style="width:auto; margin-top:0;">
+        <span style="color:#8E9BAC;">~</span>
+        <input class="sd-input" type="date" name="end_date" aria-label="식단 종료일" value="{{ end_date or '' }}" style="width:auto; margin-top:0;">
+        <button class="sd-btn sd-btn--secondary sd-btn--sm" type="submit">필터 적용</button>
+        {% if has_filters %}
+        <a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ request.url_for('admin_meals_page') }}">초기화 ✕</a>
         {% endif %}
-        {% if has_next %}
-        <a class="btn btn-sm btn-ghost" href="{{ request.url_for('admin_meals_page') }}?page={{ current_page + 1 }}">다음</a>
+    </form>
+
+    {% if meals %}
+    <div class="sd-table-wrap">
+        <div class="sd-table-scroll">
+            <table class="sd-table">
+                <thead>
+                    <tr>
+                        <th>식단 날짜</th>
+                        <th>식당</th>
+                        <th>끼니</th>
+                        <th>메뉴</th>
+                        <th>최종 수정</th>
+                        <th>작업</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for meal in meals %}
+                    <tr>
+                        <td style="font-weight:800; color:#283149; white-space:nowrap;">{{ meal.get('date', meal.get('served_date', '')) }}</td>
+                        <td style="font-weight:700; color:#3F4A54; white-space:nowrap;">{{ meal.get('restaurant_name', '') }}</td>
+                        <td><span class="sd-badge {{ meal_type_class.get(meal.get('meal_type_label', ''), 'sd-badge--neutral') }}" style="font-size:11px;">{{ meal.get('meal_type_label', meal.get('meal_type', '')) }}</span></td>
+                        <td style="color:#5D6B76; font-size:13px;">{{ meal.get('menu', [])|join(' · ') }}</td>
+                        <td style="color:#8E9BAC; font-size:12px; white-space:nowrap;">{{ meal.get('updated_at', '') }}</td>
+                        <td>
+                            <div class="sd-actions" style="gap:6px; justify-content:flex-end; flex-wrap:nowrap;">
+                                <a class="sd-btn sd-btn--ghost sd-btn--xs" href="{{ request.url_for('admin_edit_meal_page', meal_id=meal.get('id')) }}">수정</a>
+                                {# A1: 식단 삭제 — DELETE /meals/{meal_id} #}
+                                <form method="post" action="{{ request.url_for('delete_admin_meal', meal_id=meal.get('id')) }}" onsubmit="return confirm('{{ meal.get('restaurant_name', '') }} · {{ meal.get('date', meal.get('served_date', '')) }} {{ meal.get('meal_type_label', '') }} 식단을 삭제할까요? 학생들에게 더 이상 보이지 않아요.');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <button class="sd-btn sd-btn--danger sd-btn--xs" type="submit">삭제</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:18px; flex-wrap:wrap;">
+        <span style="color:#8E9BAC; font-size:13px;">총 {{ pagination.get('total', meals|length) }}건 · {{ pagination.get('current_page', 1) }} / {{ pagination.get('total_pages', 1) }} 페이지 · 식단 날짜순</span>
+        <nav class="sd-actions" style="gap:8px;" aria-label="식단 목록 페이지">
+            {% if pagination.get('first_url') %}<a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ pagination.get('first_url') }}">처음</a>{% endif %}
+            {% if pagination.get('prev_url') %}<a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ pagination.get('prev_url') }}">이전</a>{% endif %}
+            <span class="sd-btn sd-btn--secondary sd-btn--sm" aria-current="page" style="cursor:default;">{{ pagination.get('current_page', 1) }}</span>
+            {% if pagination.get('next_url') %}<a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ pagination.get('next_url') }}">다음</a>{% endif %}
+            {% if pagination.get('last_url') %}<a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ pagination.get('last_url') }}">마지막</a>{% endif %}
+        </nav>
+    </div>
+    {% else %}
+    <div class="sd-card" style="padding:56px 32px; text-align:center;">
+        <img src="{{ request.url_for('static', path='img/sandol-logo.png') }}" alt="" style="width:72px; height:72px; border-radius:18px; opacity:.9;">
+        <h2 style="font-family:var(--sd-point); font-size:20px; color:#283149; margin:16px 0 8px; font-weight:normal;">{{ '조건에 맞는 식단이 없어요' if has_filters else '등록된 식단 기록이 없어요' }}</h2>
+        <p class="sd-sub">{{ '필터를 바꾸거나 초기화해보세요.' if has_filters else '새 식단을 등록하면 이 목록에 표시돼요.' }}</p>
+        {% if has_filters %}
+        <a class="sd-btn sd-btn--ghost sd-btn--sm" style="margin-top:18px;" href="{{ request.url_for('admin_meals_page') }}">필터 초기화</a>
+        {% else %}
+        <a class="sd-btn sd-btn--primary sd-btn--sm" style="margin-top:18px;" href="{{ request.url_for('admin_new_meal_page') }}">🍚 새 식단 등록</a>
         {% endif %}
     </div>
+    {% endif %}
 </div>
-{% else %}
-<div class="ops-card">
-    <div class="card-body items-center py-14 text-center">
-        <div class="badge badge-ghost">Empty</div>
-        <h2 class="card-title mt-2">등록된 식단 기록이 없습니다.</h2>
-        <p class="text-sm text-slate-600">새 식단을 등록하면 이 목록에 표시됩니다.</p>
-    </div>
-</div>
-{% endif %}
 {% endblock %}

@@ -21,6 +21,8 @@ dependencies = [
 dev = [
     "ruff>=0.9",
     "mypy>=1.15.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.25.0",
 ]
 
 [tool.uv]
@@ -76,3 +78,10 @@ indent-style = "space"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[[tool.mypy.overrides]]
+module = ["diskcache"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

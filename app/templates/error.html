@@ -1,25 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}오류 - Sandol Meal Web{% endblock %}
+{% block title %}오류 - 산돌이 학식 콘솔{% endblock %}
 
 {% block content %}
-<section class="mx-auto max-w-2xl">
-    <div class="ops-card overflow-hidden">
-        <div class="card-body gap-6 p-6 sm:p-8 lg:p-10 text-center">
-            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-error/10 text-error text-2xl font-black">
-                {{ error_code }}
-            </div>
-            <div class="space-y-3">
-                <h1 class="text-3xl font-black tracking-tight text-slate-950">{{ error_title }}</h1>
-                <p class="mx-auto max-w-xl text-sm leading-7 text-slate-600">{{ error_message }}</p>
-            </div>
-            <div class="flex flex-col justify-center gap-3 sm:flex-row">
-                <a class="btn btn-primary" href="{{ request.url_for('root') }}">홈으로 돌아가기</a>
-                {% if not session %}
-                <a class="btn btn-outline" href="{{ request.url_for('login') }}">로그인하러 가기</a>
-                {% endif %}
-            </div>
-        </div>
+<div class="sd-main sd-main--sm" style="text-align:center; padding-top:72px;">
+    <img src="{{ request.url_for('static', path='img/sandol-logo.png') }}" alt="산돌이" style="width:96px; height:96px; border-radius:24px; opacity:.92;">
+    <h1 class="sd-title" style="margin-top:20px;">{{ error_title or '문제가 생겼어요' }}</h1>
+    <p class="sd-sub" style="font-size:16px; line-height:1.7;">{{ error_message or '요청을 처리하지 못했어요. 잠시 후 다시 시도해주세요.' }}</p>
+    {% if error_detail %}
+    <div class="sd-alert sd-alert--error" style="display:inline-block; margin-top:18px;">{{ error_detail }}</div>
+    {% endif %}
+    <div class="sd-actions" style="justify-content:center; margin-top:28px;">
+        <a class="sd-btn sd-btn--primary" href="{{ request.url_for('root') }}">홈으로 가기</a>
+        {% if session %}
+        <a class="sd-btn sd-btn--ghost" href="{{ request.url_for('admin_dashboard_page') if is_admin else request.url_for('owner_restaurants_page') }}">콘솔로 돌아가기</a>
+        {% endif %}
     </div>
-</section>
+</div>
 {% endblock %}
