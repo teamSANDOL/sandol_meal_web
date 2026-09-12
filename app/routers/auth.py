@@ -25,6 +25,7 @@ from app.services.session_service import (
     create_session,
     delete_session,
     get_session,
+    has_admin_role,
     pop_login_state,
     set_session_cookie,
 )
@@ -96,7 +97,7 @@ async def callback(
         role_claims = validate_token_claims(decode_token_claims(access_token))
 
     expires_at = session_expiry_from_token(token)
-    session_id, _ = create_session(
+    session_id, session_data = create_session(
         user_id=user_id,
         roles=extract_roles(role_claims),
         expires_at=expires_at,
@@ -107,8 +108,15 @@ async def callback(
             "token_type": token.get("token_type"),
         },
     )
+    # Land on the console the account can actually use; the landing page never
+    # advertises the admin entry point.
+    landing_route = (
+        "admin_dashboard_page"
+        if has_admin_role(session_data)
+        else "owner_restaurants_page"
+    )
     response = RedirectResponse(
-        str(request.url_for("root")),
+        str(request.url_for(landing_route)),
         status_code=Config.HttpStatus.FOUND,
     )
     set_session_cookie(response, session_id, max_age=max(1, expires_at - now_ts()))
@@ -121,6 +129,16 @@ async def logout(request: Request) -> RedirectResponse:
     """Delete the local session and redirect through Keycloak logout."""
     session_id = request.cookies.get(Config.SESSION_COOKIE_NAME)
     session = get_session(session_id) if session_id else None
+    if session is not None:
+        # Only meaningful while a session exists; without one, logout is a no-op
+        # and rejecting it would just strand the user on an error page.
+        form = await request.form()
+        csrf_token = form.get("csrf_token")
+        if not isinstance(csrf_token, str) or not secrets.compare_digest(
+            csrf_token,
+            session["csrf_token"],
+        ):
+            raise HTTPException(Config.HttpStatus.FORBIDDEN, "invalid_csrf_token")
     id_token_hint = session["token_metadata"].get("id_token") if session else None
     delete_session(session_id)
     try:
