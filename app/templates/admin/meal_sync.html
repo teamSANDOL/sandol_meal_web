@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}메뉴 동기화 - 산돌이 학식 콘솔{% endblock %}
+
+{% block content %}
+<div class="sd-main sd-main--md">
+    <div class="sd-page-head">
+        <div>
+            <div class="sd-eyebrow">ADMIN · MENU SYNC</div>
+            <h1 class="sd-title">메뉴 동기화</h1>
+            <p class="sd-sub">기본값은 가장 최근 업로드 파일입니다. 이전 원본을 선택해 다시 파싱·반영할 수도 있습니다.</p>
+        </div>
+        <a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ request.url_for('meal_excel_upload_page') }}">파일 업로드</a>
+    </div>
+
+    {% if error_message %}
+    <div class="sd-alert sd-alert--error" role="alert">{{ error_message }}</div>
+    {% endif %}
+
+    <section class="sd-card" style="margin-bottom:20px;">
+        <form method="post" action="{{ request.url_for('admin_meal_sync_submit') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label class="sd-label" for="upload_id">동기화할 업로드 파일</label>
+            <select class="sd-select" id="upload_id" name="upload_id" style="max-width:640px; margin-top:8px;" {% if not uploads %}disabled{% endif %}>
+                <option value="">최신 업로드 파일 (기본값)</option>
+                {% for upload in uploads %}
+                <option value="{{ upload.get('upload_id') }}" {{ 'selected' if selected_upload_id == upload.get('upload_id') }}>
+                    {{ upload.get('file_name', '이름 없는 파일') }} · {{ upload.get('uploaded_at', '') }}{% if upload.get('is_latest') %} · 최신{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+            <p class="sd-help" style="margin-top:8px;">파일을 선택하지 않으면 목록의 최신 파일을 사용합니다. 기존 메뉴는 선택 파일의 파싱 결과로 upsert됩니다.</p>
+            <div class="sd-actions" style="margin-top:18px;">
+                <button class="sd-btn sd-btn--primary" type="submit" {% if not uploads %}disabled{% endif %}>선택 파일 동기화</button>
+            </div>
+        </form>
+    </section>
+
+    {% if sync_result %}
+    <section class="sd-card" style="margin-bottom:20px;" aria-live="polite">
+        <div class="sd-upload-result-head">
+            <div>
+                {% if sync_result.get('sync_status') == 'completed' %}
+                <span class="sd-badge sd-badge--ok">동기화 완료</span>
+                <h2 class="sd-title sd-title--sm">메뉴 동기화 결과</h2>
+                {% else %}
+                <span class="sd-badge sd-badge--danger">동기화 실패</span>
+                <h2 class="sd-title sd-title--sm">메뉴 동기화 오류</h2>
+                {% endif %}
+            </div>
+        </div>
+        <dl class="sd-upload-meta">
+            <div><dt>파일</dt><dd>{{ sync_result.get('file_name', '-') }}</dd></div>
+            <div><dt>업로드 시각</dt><dd>{{ sync_result.get('uploaded_at', '-') }}</dd></div>
+            <div><dt>동기화 시각</dt><dd>{{ sync_result.get('synced_at', sync_result.get('sync_requested_at', '-')) }}</dd></div>
+            <div><dt>선택 방식</dt><dd>{{ '최신 업로드' if sync_result.get('sync_source') == 'latest' else '선택 파일' }}</dd></div>
+        </dl>
+
+        {% if sync_result.get('sync_status') == 'completed' %}
+        <div class="sd-grid sd-grid--stats sd-upload-stats">
+            <div class="sd-card sd-card--tight"><span>분석한 식단</span><strong>{{ sync_result.get('summary', {}).get('parsed', 0) }}건</strong></div>
+            <div class="sd-card sd-card--tight"><span>반영한 식단</span><strong>{{ sync_result.get('summary', {}).get('reflected', 0) }}건</strong></div>
+            <div class="sd-card sd-card--tight"><span>식당</span><strong>{{ sync_result.get('summary', {}).get('restaurants', 0) }}곳</strong></div>
+        </div>
+        <p class="sd-sub" style="margin-top:14px;">대상 기간: {{ sync_result.get('period', {}).get('start_date', '-') }} ~ {{ sync_result.get('period', {}).get('end_date', '-') }}</p>
+        {% else %}
+        <div class="sd-alert sd-alert--error" style="margin-top:16px;">
+            <strong>{{ sync_result.get('sync_error_code', 'sync_failed') }}</strong>
+            <div style="margin-top:6px;">{{ sync_result.get('sync_error_message', '동기화 원인을 확인할 수 없습니다.') }}</div>
+        </div>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    <section aria-labelledby="upload-list-title">
+        <div class="sd-page-head" style="margin-bottom:12px;">
+            <div>
+                <h2 id="upload-list-title" class="sd-title sd-title--sm">보관된 원본 파일</h2>
+                <p class="sd-sub">업로드 성공 여부와 분석·최근 동기화 상태를 확인할 수 있습니다.</p>
+            </div>
+        </div>
+        {% if uploads %}
+        <div class="sd-table-wrap">
+            <div class="sd-table-scroll">
+                <table class="sd-table">
+                    <thead><tr><th>파일</th><th>업로드 시각</th><th>분석</th><th>최근 동기화</th><th>대상 기간</th></tr></thead>
+                    <tbody>
+                    {% for upload in uploads %}
+                    <tr>
+                        <td style="font-weight:700;">{{ upload.get('file_name', '-') }}{% if upload.get('is_latest') %}<span class="sd-badge sd-badge--info" style="margin-left:6px; font-size:10px;">최신</span>{% endif %}<div class="sd-help">{{ upload.get('upload_id', '') }}</div></td>
+                        <td style="white-space:nowrap;">{{ upload.get('uploaded_at', '-') }}</td>
+                        <td>{{ '성공' if upload.get('analysis_status') == 'completed' else ('실패' if upload.get('analysis_status') == 'failed' else '대기') }}{% if upload.get('analysis_error_message') %}<div class="sd-help sd-help--danger">{{ upload.get('analysis_error_message') }}</div>{% endif %}</td>
+                        <td>{{ '성공' if upload.get('sync_status') == 'completed' else ('실패' if upload.get('sync_status') == 'failed' else '미실행') }}{% if upload.get('sync_error_message') %}<div class="sd-help sd-help--danger">{{ upload.get('sync_error_message') }}</div>{% endif %}</td>
+                        <td>{{ upload.get('period', {}).get('start_date', '-') }}{% if upload.get('period') %} ~ {{ upload.get('period', {}).get('end_date', '-') }}{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="sd-card sd-card--tight"><p class="sd-sub">아직 보관된 Excel 파일이 없습니다. 메뉴 업로드에서 원본을 먼저 올려주세요.</p></div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

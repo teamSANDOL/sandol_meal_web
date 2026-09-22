@@ -159,6 +159,77 @@ async def admin_dashboard_page(
     )
 
 
+@router.get("/meal-sync", response_class=HTMLResponse, name="admin_meal_sync_page")
+async def admin_meal_sync_page(
+    request: Request,
+    error: str | None = None,
+) -> Response:
+    """Render the administrator's archived workbook synchronization page."""
+    session = ph.page_session(request, admin=True)
+    uploads: list[dict[str, Any]] = []
+    error_message = error
+    try:
+        uploads = vm.upload_list(
+            await meal_service_client.list_excel_uploads(user_id=session["user_id"])
+        )
+    except MealServiceError as exc:
+        error_message = error_message or exc.message
+    return ph.render(
+        request,
+        session,
+        "admin/meal_sync.html",
+        uploads=uploads,
+        latest_upload_id=uploads[0].get("upload_id") if uploads else None,
+        sync_result=None,
+        error_message=error_message,
+    )
+
+
+@router.post("/meal-sync", response_class=HTMLResponse, name="admin_meal_sync_submit")
+async def admin_meal_sync_submit(request: Request) -> Response:
+    """Synchronize the latest or selected workbook and show detailed outcome."""
+    session, form_data = await ph.post_session(request, admin=True)
+    raw_upload_id = form_data.get("upload_id")
+    upload_id = raw_upload_id.strip() if isinstance(raw_upload_id, str) else None
+    sync_result: dict[str, Any] | None = None
+    error_message: str | None = None
+    try:
+        sync_result = ph.response_data(
+            await meal_service_client.sync_meals(
+                user_id=session["user_id"],
+                upload_id=upload_id or None,
+            )
+        )
+    except MealServiceError as exc:
+        error_message = exc.message
+
+    uploads: list[dict[str, Any]] = []
+    try:
+        uploads = vm.upload_list(
+            await meal_service_client.list_excel_uploads(user_id=session["user_id"])
+        )
+    except MealServiceError as exc:
+        if error_message is None:
+            error_message = exc.message
+
+    return ph.render(
+        request,
+        session,
+        "admin/meal_sync.html",
+        uploads=uploads,
+        latest_upload_id=uploads[0].get("upload_id") if uploads else None,
+        sync_result=sync_result,
+        selected_upload_id=upload_id,
+        error_message=error_message,
+    )
+
+
+@router.post("/meals/sync", response_class=HTMLResponse, name="admin_meal_sync")
+async def admin_meal_sync(request: Request) -> Response:
+    """Keep the previous admin command URL as an alias for latest-file sync."""
+    return await admin_meal_sync_submit(request)
+
+
 def _latest_meal_cards(
     meals: list[dict[str, Any]],
     iso_today: str,
@@ -179,30 +250,6 @@ def _latest_meal_cards(
     return sorted(
         by_restaurant.values(),
         key=lambda item: (item["is_today"], str(item.get("restaurant_name") or "")),
-    )
-
-
-@router.post("/meals/sync", response_class=HTMLResponse, name="admin_meal_sync")
-async def admin_meal_sync(request: Request) -> Response:
-    """Trigger a forced meal synchronization (A8)."""
-    session, _ = await ph.post_session(request, admin=True)
-    try:
-        await meal_service_client.sync_meals(user_id=session["user_id"])
-    except MealServiceError as exc:
-        return ph.redirect(
-            ph.url_with_message(
-                request,
-                "admin_dashboard_page",
-                exc.message,
-                query_name="error",
-            )
-        )
-    return ph.redirect(
-        ph.url_with_message(
-            request,
-            "admin_dashboard_page",
-            "식단 동기화를 요청했습니다.",
-        )
     )
 
 

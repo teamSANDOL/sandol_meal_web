@@ -776,13 +776,75 @@ class MealServiceClient:
             user_id=user_id,
         )
 
-    async def sync_meals(self, *, user_id: str) -> None:
-        """Trigger a forced meal synchronization."""
-        await self._request_empty(
-            "POST",
-            "/meals/meal_sync",
+    async def list_excel_uploads(self, *, user_id: str) -> dict[str, Any]:
+        """List archived Excel workbooks available to an administrator."""
+        return await self._request_json(
+            "GET",
+            "/meals/excel/uploads",
             user_id=user_id,
         )
+
+    async def sync_meals(
+        self,
+        *,
+        user_id: str,
+        upload_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Synchronize the latest or a selected archived workbook."""
+        payload = {"upload_id": upload_id} if upload_id else {}
+        return await self._request_json(
+            "POST",
+            "/meals/excel/sync",
+            user_id=user_id,
+            json=payload,
+        )
+
+    async def upload_excel(
+        self,
+        *,
+        user_id: str,
+        file_name: str,
+        content: bytes,
+    ) -> dict[str, Any]:
+        """Upload a meal workbook and return the analysis result."""
+        headers = self._headers(user_id)
+        try:
+            async with httpx.AsyncClient(
+                base_url=self.base_url,
+                timeout=Config.MEAL_UPLOAD_TIMEOUT_SECONDS,
+            ) as client:
+                response = await client.post(
+                    "/meals/excel",
+                    headers=headers,
+                    files={
+                        "file": (
+                            file_name,
+                            content,
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        )
+                    },
+                )
+                response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise MealServiceError(
+                exc.response.status_code,
+                self._error_message(exc.response),
+            ) from exc
+        except httpx.RequestError as exc:
+            raise MealServiceError(
+                Config.HttpStatus.INTERNAL_SERVER_ERROR,
+                "학식 서비스에 연결할 수 없습니다.",
+            ) from exc
+
+        if not response.content:
+            return {}
+        data = response.json()
+        if not isinstance(data, dict):
+            raise MealServiceError(
+                Config.HttpStatus.INTERNAL_SERVER_ERROR,
+                "학식 서비스 응답 형식이 올바르지 않습니다.",
+            )
+        return data
 
     async def get_meal_detail(
         self,

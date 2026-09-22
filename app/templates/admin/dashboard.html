@@ -3,7 +3,7 @@
 {% block title %}대시보드 - 산돌이 학식 콘솔{% endblock %}
 
 {% block content %}
-{# 신규 라우트: GET /admin (admin_dashboard_page) — A7 최신 식단(GET /meals/latest), A8 동기화(POST /meals/meal_sync) #}
+{# 운영진 대시보드 #}
 <div class="sd-main">
     <div class="sd-banner sd-banner-navy" style="padding:26px 32px; margin-bottom:24px;">
         <img src="{{ request.url_for('static', path='img/sandol-logo.png') }}" alt="산돌이" style="width:60px; height:60px; border-radius:16px;">
@@ -11,10 +11,6 @@
             <h1 style="font-weight:800; font-size:26px; letter-spacing:-.02em; color:#fff; margin:0 0 4px;">운영진님, 어서오세요!</h1>
             <p style="color:#C6D0DE; margin:0; font-size:14px;">{{ today_label }} · 검토할 요청 <b style="color:#95E0F4;">{{ pending_request_count or 0 }}건</b> · 매니저 신청 <b style="color:#95E0F4;">{{ pending_manager_request_count or 0 }}건</b>이 기다리고 있어요.</p>
         </div>
-        <form method="post" action="{{ request.url_for('admin_meal_sync') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button class="sd-btn sd-btn--sm" type="submit" style="background:rgba(149,224,244,.12); border:1px solid rgba(149,224,244,.4); color:#95E0F4;">🔄 식단 강제 동기화</button>
-        </form>
     </div>
 
     {% if success_message %}<div class="sd-alert sd-alert--success">{{ success_message }}</div>{% endif %}

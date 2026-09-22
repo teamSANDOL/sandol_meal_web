@@ -176,9 +176,12 @@ def csrf_token_for_template(session: SessionData | None) -> str:
 def has_admin_role(session: SessionData) -> bool:
     """Return whether the current session has a configured admin role."""
     roles = set(session["roles"])
-    return bool(
-        {Config.REALM_GLOBAL_ADMIN_ROLE, Config.MEAL_CLIENT_ADMIN_ROLE} & roles
-    )
+    return bool({Config.REALM_GLOBAL_ADMIN_ROLE, Config.MEAL_CLIENT_ADMIN_ROLE} & roles)
+
+
+def can_upload_meals(session: SessionData) -> bool:
+    """Return whether the session has a configured meal upload role."""
+    return has_admin_role(session) or Config.MEAL_UPLOADER_ROLE in session["roles"]
 
 
 def navigation_context(
@@ -190,6 +193,7 @@ def navigation_context(
     route_name = getattr(route, "name", "")
     return {
         "is_admin": session is not None and has_admin_role(session),
+        "can_upload_meals": session is not None and can_upload_meals(session),
         "current_route": route_name if isinstance(route_name, str) else "",
     }
 

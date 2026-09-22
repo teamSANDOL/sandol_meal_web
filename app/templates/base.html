@@ -31,12 +31,16 @@
                 <a class="sd-navlink {{ 'active' if current_route in ['admin_requests_page', 'admin_request_detail_page'] }}" href="{{ request.url_for('admin_requests_page') }}">등록 요청</a>
                 <a class="sd-navlink {{ 'active' if current_route in ['admin_restaurants_page', 'admin_new_restaurant_page', 'admin_edit_restaurant_page', 'admin_restaurant_detail_page', 'admin_restaurant_managers_page', 'admin_restaurant_manager_requests_page'] }}" href="{{ request.url_for('admin_restaurants_page') }}">식당</a>
                 <a class="sd-navlink {{ 'active' if current_route in ['admin_meals_page', 'admin_new_meal_page', 'admin_edit_meal_page'] }}" href="{{ request.url_for('admin_meals_page') }}">식단</a>
+                <a class="sd-navlink {{ 'active' if current_route in ['admin_meal_sync_page', 'admin_meal_sync_submit'] }}" href="{{ request.url_for('admin_meal_sync_page') }}">메뉴 동기화</a>
+                {% endif %}
+                {% if can_upload_meals %}
+                <a class="sd-navlink {{ 'active' if current_route in ['meal_excel_upload_page', 'meal_excel_upload_submit'] }}" href="{{ request.url_for('meal_excel_upload_page') }}">메뉴 업로드</a>
                 {% endif %}
             </nav>
             {% endif %}
             <div class="sd-nav-side">
                 {% if session %}
-                <span class="sd-role-chip {{ 'admin' if is_admin else 'owner' }}">{{ '🛠️ 관리자' if is_admin else '🍽️ 식당주' }}</span>
+                <span class="sd-role-chip {{ 'admin' if is_admin else 'owner' }}">{{ '🛠️ 관리자' if is_admin else ('📊 식단 담당자' if can_upload_meals else '🍽️ 식당주') }}</span>
                 <form method="post" action="{{ request.url_for('logout') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button class="sd-btn sd-btn--ghost sd-btn--sm" type="submit">로그아웃</button>
