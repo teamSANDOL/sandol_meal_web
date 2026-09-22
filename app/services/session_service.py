@@ -2,6 +2,7 @@
 
 import secrets
 from typing import Annotated, Any, Literal, TypedDict, cast
+from urllib.parse import unquote, urlsplit
 
 from diskcache import FanoutCache
 from fastapi import Form, HTTPException, Request
@@ -17,6 +18,7 @@ class LoginState(TypedDict):
     nonce: str
     code_verifier: str
     ts: int
+    login_after: str | None
 
 
 class SessionData(TypedDict):
@@ -31,6 +33,48 @@ class SessionData(TypedDict):
 
 _CACHE = FanoutCache(directory=Config.SESSION_CACHE_DIR, shards=8)
 _COOKIE_SAMESITE_VALUES = {"lax", "strict", "none"}
+_APP_ROOT_PATH = "/meal-web"
+_MAX_LOGIN_AFTER_LENGTH = 2048
+_ASCII_CONTROL_MAX = 31
+_ASCII_DELETE = 127
+
+
+def _fully_unquote(value: str) -> str:
+    """Decode nested percent escapes until the value stabilizes."""
+    decoded = value
+    for _ in range(len(value)):
+        next_value = unquote(decoded)
+        if next_value == decoded:
+            break
+        decoded = next_value
+    return decoded
+
+
+def safe_login_after(value: str | None) -> str | None:  # noqa: PLR0911
+    """Return an in-app return target, rejecting redirect and path tricks."""
+    if not value or len(value) > _MAX_LOGIN_AFTER_LENGTH or value.startswith("//"):
+        return None
+
+    decoded = _fully_unquote(value)
+    if any(
+        ord(character) <= _ASCII_CONTROL_MAX or ord(character) == _ASCII_DELETE
+        for character in decoded
+    ):
+        return None
+    if "\\" in decoded:
+        return None
+
+    parsed = urlsplit(decoded)
+    if parsed.scheme or parsed.netloc or parsed.fragment:
+        return None
+    path = parsed.path
+    if path != _APP_ROOT_PATH and not path.startswith(f"{_APP_ROOT_PATH}/"):
+        return None
+    if path == f"{_APP_ROOT_PATH}/auth" or path.startswith(f"{_APP_ROOT_PATH}/auth/"):
+        return None
+    if any(segment in {".", ".."} for segment in path.split("/")):
+        return None
+    return value
 
 
 def _cookie_samesite() -> Literal["lax", "strict", "none"]:
@@ -41,13 +85,16 @@ def _cookie_samesite() -> Literal["lax", "strict", "none"]:
     return "lax"
 
 
-def create_login_state(*, nonce: str, code_verifier: str) -> str:
+def create_login_state(
+    *, nonce: str, code_verifier: str, login_after: str | None = None
+) -> str:
     """Store transient OIDC state and return the random state id."""
     state = secrets.token_urlsafe(24)
     data: LoginState = {
         "nonce": nonce,
         "code_verifier": code_verifier,
         "ts": now_ts(),
+        "login_after": safe_login_after(login_after),
     }
     _ = _CACHE.set(f"state:{state}", data, expire=Config.STATE_TTL_SECONDS)
     return state
@@ -65,7 +112,15 @@ def pop_login_state(state: str) -> LoginState | None:
     code_verifier = data.get("code_verifier")
     if not isinstance(nonce, str) or not isinstance(code_verifier, str):
         return None
-    return {"nonce": nonce, "code_verifier": code_verifier, "ts": ts}
+    login_after = data.get("login_after")
+    return {
+        "nonce": nonce,
+        "code_verifier": code_verifier,
+        "ts": ts,
+        "login_after": safe_login_after(login_after)
+        if isinstance(login_after, str)
+        else None,
+    }
 
 
 def create_session(
@@ -182,6 +237,21 @@ def has_admin_role(session: SessionData) -> bool:
 def can_upload_meals(session: SessionData) -> bool:
     """Return whether the session has a configured meal upload role."""
     return has_admin_role(session) or Config.MEAL_UPLOADER_ROLE in session["roles"]
+
+
+def can_access_login_after(session: SessionData, login_after: str | None) -> bool:
+    """Return whether a validated return target is compatible with session roles."""
+    target = safe_login_after(login_after)
+    if target is None:
+        return False
+    path = urlsplit(_fully_unquote(target)).path
+    if path == f"{_APP_ROOT_PATH}/admin" or path.startswith(f"{_APP_ROOT_PATH}/admin/"):
+        return has_admin_role(session)
+    if path == f"{_APP_ROOT_PATH}/uploader" or path.startswith(
+        f"{_APP_ROOT_PATH}/uploader/"
+    ):
+        return can_upload_meals(session)
+    return True
 
 
 def navigation_context(
