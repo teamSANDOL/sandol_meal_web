@@ -12,11 +12,6 @@
             <p class="sd-sub">모든 식당의 식단을 제공일 기준으로 확인하고 관리해요.</p>
         </div>
         <div class="sd-actions">
-            {# A8: 강제 동기화 — POST /meals/meal_sync #}
-            <form method="post" action="{{ request.url_for('admin_meal_sync') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button class="sd-btn sd-btn--ghost sd-btn--sm" type="submit">🔄 강제 동기화</button>
-            </form>
             <a class="sd-btn sd-btn--primary" href="{{ request.url_for('admin_new_meal_page') }}">🍚 새 식단 등록</a>
         </div>
     </div>

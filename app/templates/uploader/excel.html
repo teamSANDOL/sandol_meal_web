@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}메뉴 파일 업로드 - 산돌이 학식 콘솔{% endblock %}
+
+{% block content %}
+<div class="sd-main sd-main--md">
+    <div class="sd-page-head">
+        <div>
+            <h1 class="sd-title">식단 파일 업로드</h1>
+            <p class="sd-sub">학생식당 주간 식단표 Excel 파일을 올리면 바로 반영됩니다.</p>
+        </div>
+    </div>
+
+    {% if error_message %}
+    <div class="sd-alert sd-alert--error" role="alert">{{ error_message }}</div>
+    {% endif %}
+
+    {% if upload_result and (upload_result.analysis_status == "completed" or upload_result.status == "completed") %}
+    <section class="sd-card sd-upload-result" aria-labelledby="upload-result-title">
+        <div class="sd-upload-result-head">
+            <div>
+                <span class="sd-badge sd-badge--ok">반영 완료</span>
+                <h2 id="upload-result-title">업로드한 메뉴 분석 결과</h2>
+                <p class="sd-sub">
+                    {% if upload_result.already_applied %}
+                    동일한 파일이 이미 반영되어 기존 결과를 보여드립니다.
+                    {% else %}
+                    아래 메뉴는 업로드 직후 학식 서비스에 반영되었습니다.
+                    {% endif %}
+                </p>
+            </div>
+            <a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ request.url_for('meal_excel_upload_page') }}">다른 파일 업로드</a>
+        </div>
+
+        <dl class="sd-upload-meta">
+            <div><dt>파일</dt><dd>{{ upload_result.file_name }}</dd></div>
+            <div><dt>대상 기간</dt><dd>{{ upload_result.period.start_date }} ~ {{ upload_result.period.end_date }}</dd></div>
+            <div><dt>업로드 시각</dt><dd><time datetime="{{ upload_result.uploaded_at }}">{{ upload_result.uploaded_at }}</time></dd></div>
+            <div><dt>파일 크기</dt><dd>{{ "%.1f"|format(upload_result.file_size / 1024) }} KB</dd></div>
+            <div><dt>SHA-256</dt><dd title="{{ upload_result.sha256 }}">{{ upload_result.sha256[:12] }}…</dd></div>
+        </dl>
+
+        <div class="sd-grid sd-grid--stats sd-upload-stats">
+            <div class="sd-card sd-card--tight"><span>분석한 식단</span><strong>{{ upload_result.summary.parsed }}건</strong></div>
+            <div class="sd-card sd-card--tight"><span>반영한 식단</span><strong>{{ upload_result.summary.reflected }}건</strong></div>
+            <div class="sd-card sd-card--tight"><span>식당</span><strong>{{ upload_result.summary.restaurants }}곳</strong></div>
+        </div>
+    </section>
+
+    <section class="sd-upload-analysis" aria-labelledby="upload-menu-title">
+        <div class="sd-page-head">
+            <div>
+                <h2 id="upload-menu-title" class="sd-title sd-title--sm">반영된 메뉴</h2>
+                <p class="sd-sub">날짜별 식당 및 끼니 내용을 확인해주세요.</p>
+            </div>
+        </div>
+        <div class="sd-table-wrap">
+            <div class="sd-table-scroll">
+                <table class="sd-table sd-upload-table">
+                    <thead><tr><th>날짜</th><th>식당</th><th>끼니</th><th>메뉴</th></tr></thead>
+                    <tbody>
+                        {% for item in upload_result["items"] %}
+                        <tr>
+                            <td>{{ item.date }}</td>
+                            <td>{{ item.restaurant }}</td>
+                            <td>{{ item.meal_type_label }}</td>
+                            <td>{{ item.menu|join(", ") }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    {% elif upload_result %}
+    <section class="sd-card sd-upload-result" aria-labelledby="upload-result-title" role="status">
+        <div class="sd-upload-result-head">
+            <div>
+                <span class="sd-badge sd-badge--ok">업로드 완료</span>
+                <h2 id="upload-result-title">파일 업로드가 완료되었습니다</h2>
+                <p class="sd-sub">원본 Excel 파일을 보관했습니다.</p>
+            </div>
+            <a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ request.url_for('meal_excel_upload_page') }}">다른 파일 업로드</a>
+        </div>
+    </section>
+    {% else %}
+    <section class="sd-card" aria-labelledby="excel-upload-title">
+        <form method="post" action="{{ request.url_for('meal_excel_upload_submit') }}" enctype="multipart/form-data" hx-encoding="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input id="excel-file" class="hidden" type="file" name="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+            <label class="sd-dropzone" for="excel-file" tabindex="0" id="excel-dropzone" aria-describedby="excel-upload-help">
+                <span class="sd-dropzone-icon" aria-hidden="true">↥</span>
+                <strong id="excel-upload-title">Excel 파일을 여기에 놓으세요</strong>
+                <span>또는 <span class="sd-dropzone-link">파일 선택</span></span>
+                <small id="excel-upload-help">.xlsx 파일 · 최대 {{ max_upload_size_mb|int }}MB</small>
+            </label>
+
+            <div id="excel-file-selected" class="sd-upload-file hidden" aria-live="polite">
+                <div>
+                    <strong id="excel-file-name"></strong>
+                    <span id="excel-file-size" class="sd-help"></span>
+                </div>
+                <button id="excel-file-remove" class="sd-btn sd-btn--ghost sd-btn--sm" type="button">파일 제거</button>
+            </div>
+
+            <div class="sd-alert sd-alert--tip sd-upload-notice">
+                분석 가능한 식단표는 업로드 직후 메뉴에 반영되며, 분석 결과를 확인할 수 있습니다.
+            </div>
+            <div class="sd-upload-actions">
+                <button id="excel-upload-submit" class="sd-btn sd-btn--primary" type="submit" disabled>업로드 및 반영</button>
+            </div>
+        </form>
+    </section>
+    {% endif %}
+</div>
+
+<script>
+(() => {
+    const input = document.getElementById("excel-file");
+    const dropzone = document.getElementById("excel-dropzone");
+    const selected = document.getElementById("excel-file-selected");
+    const fileName = document.getElementById("excel-file-name");
+    const fileSize = document.getElementById("excel-file-size");
+    const remove = document.getElementById("excel-file-remove");
+    const submit = document.getElementById("excel-upload-submit");
+    if (!input || !dropzone || !selected || !fileName || !fileSize || !remove || !submit) return;
+
+    const maxBytes = {{ (max_upload_size_mb * 1024 * 1024)|int }};
+    const setFile = (file) => {
+        if (!file) {
+            selected.classList.add("hidden");
+            submit.disabled = true;
+            fileName.textContent = "";
+            fileSize.textContent = "";
+            return;
+        }
+        fileName.textContent = file.name;
+        const isXlsx = file.name.toLowerCase().endsWith(".xlsx");
+        const isWithinLimit = file.size <= maxBytes;
+        fileSize.classList.toggle("sd-help--danger", !isXlsx || !isWithinLimit);
+        fileSize.textContent = !isXlsx
+            ? ".xlsx 파일만 업로드할 수 있습니다."
+            : !isWithinLimit
+                ? `파일 크기는 최대 {{ max_upload_size_mb|int }}MB입니다.`
+                : `${(file.size / 1024).toFixed(1)} KB`;
+        selected.classList.remove("hidden");
+        submit.disabled = !isXlsx || !isWithinLimit;
+    };
+
+    input.addEventListener("change", () => setFile(input.files && input.files[0]));
+    dropzone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            input.click();
+        }
+    });
+    ["dragenter", "dragover"].forEach((eventName) => {
+        dropzone.addEventListener(eventName, (event) => {
+            event.preventDefault();
+            dropzone.classList.add("is-dragover");
+        });
+    });
+    ["dragleave", "drop"].forEach((eventName) => {
+        dropzone.addEventListener(eventName, (event) => {
+            event.preventDefault();
+            dropzone.classList.remove("is-dragover");
+        });
+    });
+    dropzone.addEventListener("drop", (event) => {
+        const file = event.dataTransfer && event.dataTransfer.files[0];
+        if (!file) return;
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        input.files = transfer.files;
+        setFile(file);
+    });
+    remove.addEventListener("click", () => {
+        input.value = "";
+        setFile(null);
+    });
+})();
+</script>
+{% endblock %}

@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.config import Config, logger
-from app.routers import admin_router, auth_router, owner_router
+from app.routers import admin_router, auth_router, owner_router, uploader_router
 from app.services.session_service import (
     csrf_token_for_template,
     get_optional_session,
@@ -25,6 +25,7 @@ app.mount(
 app.include_router(auth_router)
 app.include_router(owner_router)
 app.include_router(admin_router)
+app.include_router(uploader_router)
 
 #: Titles and copy for the error page, keyed by status code.
 _ERROR_COPY: dict[int, tuple[str, str]] = {

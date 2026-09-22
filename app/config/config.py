@@ -49,16 +49,12 @@ class Config:
     SESSION_COOKIE_NAME: str = os.getenv(
         "MEAL_WEB_SESSION_COOKIE_NAME", "meal_web_session"
     )
-    SESSION_TTL_SECONDS: int = int(
-        os.getenv("MEAL_WEB_SESSION_TTL_SECONDS", "3600")
-    )
+    SESSION_TTL_SECONDS: int = int(os.getenv("MEAL_WEB_SESSION_TTL_SECONDS", "3600"))
     STATE_TTL_SECONDS: int = int(os.getenv("MEAL_WEB_STATE_TTL_SECONDS", "600"))
     SESSION_CACHE_DIR: str = os.getenv(
         "MEAL_WEB_SESSION_CACHE_DIR", str(SERVICE_DIR / ".cache" / "sessions")
     )
-    COOKIE_SECURE: bool = (
-        os.getenv("MEAL_WEB_COOKIE_SECURE", "False").lower() == "true"
-    )
+    COOKIE_SECURE: bool = os.getenv("MEAL_WEB_COOKIE_SECURE", "False").lower() == "true"
     COOKIE_SAMESITE: str = os.getenv("MEAL_WEB_COOKIE_SAMESITE", "lax")
 
     MEAL_SERVICE_BASE_URL: str = os.getenv(
@@ -66,6 +62,12 @@ class Config:
     ).rstrip("/")
     MEAL_SERVICE_TIMEOUT_SECONDS: float = float(
         os.getenv("MEAL_SERVICE_TIMEOUT_SECONDS", "10")
+    )
+    MEAL_UPLOAD_TIMEOUT_SECONDS: float = float(
+        os.getenv("MEAL_UPLOAD_TIMEOUT_SECONDS", "60")
+    )
+    MEAL_UPLOAD_MAX_BYTES: int = int(
+        os.getenv("MEAL_UPLOAD_MAX_BYTES", str(5 * 1024 * 1024))
     )
 
     KC_SERVER_URL: str = os.getenv("KC_SERVER_URL", "https://sandori.kr/auth/")
@@ -80,10 +82,9 @@ class Config:
     KC_REDIRECT_PATH: str = os.getenv("KC_REDIRECT_PATH", "/auth/callback")
     KC_SCOPE: str = os.getenv("KC_SCOPE", "openid profile email")
 
-    REALM_GLOBAL_ADMIN_ROLE: str = os.getenv(
-        "REALM_GLOBAL_ADMIN_ROLE", "global_admin"
-    )
+    REALM_GLOBAL_ADMIN_ROLE: str = os.getenv("REALM_GLOBAL_ADMIN_ROLE", "global_admin")
     MEAL_CLIENT_ADMIN_ROLE: str = os.getenv("MEAL_CLIENT_ADMIN_ROLE", "meal_admin")
+    MEAL_UPLOADER_ROLE: str = os.getenv("MEAL_UPLOADER_ROLE", "meal_uploader")
 
     class HttpStatus:
         """HTTP status codes used in this service."""

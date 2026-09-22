@@ -14,6 +14,7 @@ from app.services.meal_client import meal_service_client
 from app.services.session_service import (
     SessionData,
     csrf_token_for_template,
+    can_upload_meals,
     get_optional_session,
     has_admin_role,
     navigation_context,
@@ -109,7 +110,12 @@ def url_with_message(
     return f"{url}?{urlencode(query)}"
 
 
-def page_session(request: Request, *, admin: bool = False) -> SessionData:
+def page_session(
+    request: Request,
+    *,
+    admin: bool = False,
+    meal_uploader: bool = False,
+) -> SessionData:
     """Return the session for a GET page, redirecting anonymous users to login."""
     session = get_optional_session(request)
     if session is None:
@@ -120,6 +126,8 @@ def page_session(request: Request, *, admin: bool = False) -> SessionData:
         )
     if admin and not has_admin_role(session):
         raise HTTPException(Config.HttpStatus.FORBIDDEN, "admin_role_required")
+    if meal_uploader and not can_upload_meals(session):
+        raise HTTPException(Config.HttpStatus.FORBIDDEN, "meal_uploader_role_required")
     return session
 
 
@@ -127,6 +135,7 @@ async def post_session(
     request: Request,
     *,
     admin: bool = False,
+    meal_uploader: bool = False,
 ) -> tuple[SessionData, dict[str, Any]]:
     """Require a valid session and CSRF token, returning the parsed form."""
     session = get_optional_session(request)
@@ -138,6 +147,8 @@ async def post_session(
         )
     if admin and not has_admin_role(session):
         raise HTTPException(Config.HttpStatus.FORBIDDEN, "admin_role_required")
+    if meal_uploader and not can_upload_meals(session):
+        raise HTTPException(Config.HttpStatus.FORBIDDEN, "meal_uploader_role_required")
     form = await request.form()
     csrf_token = form.get("csrf_token")
     if not isinstance(csrf_token, str) or not secrets.compare_digest(
