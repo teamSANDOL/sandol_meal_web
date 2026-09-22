@@ -21,6 +21,19 @@ UPLOAD_SESSION: dict[str, Any] = {
 }
 
 
+def test_upload_form_has_a_clear_dropzone(monkeypatch: Any) -> None:
+    """The upload page exposes a visible file drop and selection surface."""
+    monkeypatch.setattr(uploader.ph, "page_session", lambda *_args, **_kwargs: UPLOAD_SESSION)
+
+    with TestClient(main.app) as client:
+        response = client.get("/uploader/excel")
+
+    assert response.status_code == 200
+    assert 'id="excel-dropzone"' in response.text
+    assert "파일을 이 영역에 끌어다 놓으세요" in response.text
+    assert "파일 추가" in response.text
+
+
 def _mock_upload_submission(monkeypatch: Any, response_data: dict[str, Any]) -> None:
     """Replace session parsing and the meal-service upload call."""
 
