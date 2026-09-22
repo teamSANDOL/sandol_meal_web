@@ -4,6 +4,7 @@ from datetime import date, datetime
 from typing import Any
 
 from app.config import Config
+from app.services import page_helpers as ph
 
 ESTABLISHMENT_TYPE_LABELS: dict[str, str] = {
     "student": "교내 학생식당",
@@ -25,6 +26,11 @@ MEAL_TYPE_EMOJI: dict[str, str] = {
     "lunch": "🍚",
     "dinner": "🌙",
 }
+
+
+def upload_list(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract archived workbook records from a meal-service response."""
+    return ph.request_items(data)
 
 #: Slots always rendered on the owner meal dashboard, in serving order.
 DEFAULT_MEAL_SLOT_KEYS: tuple[str, ...] = ("breakfast", "lunch", "dinner")

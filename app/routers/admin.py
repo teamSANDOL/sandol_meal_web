@@ -27,11 +27,6 @@ MEAL_TYPE_OPTIONS: tuple[tuple[str, str], ...] = tuple(vm.MEAL_TYPE_LABELS.items
 DASHBOARD_LATEST_LIMIT = 12
 
 
-def _upload_list(data: dict[str, Any]) -> list[dict[str, Any]]:
-    """Extract archived workbook records from the meal-service response."""
-    return ph.request_items(data)
-
-
 def _restaurant_form_values(restaurant: dict[str, Any] | None) -> dict[str, Any]:
     """Flatten restaurant API data into admin form field values."""
     if restaurant is None:
@@ -174,7 +169,7 @@ async def admin_meal_sync_page(
     uploads: list[dict[str, Any]] = []
     error_message = error
     try:
-        uploads = _upload_list(
+        uploads = vm.upload_list(
             await meal_service_client.list_excel_uploads(user_id=session["user_id"])
         )
     except MealServiceError as exc:
@@ -210,7 +205,7 @@ async def admin_meal_sync_submit(request: Request) -> Response:
 
     uploads: list[dict[str, Any]] = []
     try:
-        uploads = _upload_list(
+        uploads = vm.upload_list(
             await meal_service_client.list_excel_uploads(user_id=session["user_id"])
         )
     except MealServiceError as exc:

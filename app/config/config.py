@@ -67,7 +67,7 @@ class Config:
         os.getenv("MEAL_UPLOAD_TIMEOUT_SECONDS", "60")
     )
     MEAL_UPLOAD_MAX_BYTES: int = int(
-        os.getenv("MEAL_UPLOAD_MAX_BYTES", str(5 * 1024 * 1024))
+        os.getenv("MEAL_UPLOAD_MAX_BYTES", str(10 * 1024 * 1024))
     )
 
     KC_SERVER_URL: str = os.getenv("KC_SERVER_URL", "https://sandori.kr/auth/")
