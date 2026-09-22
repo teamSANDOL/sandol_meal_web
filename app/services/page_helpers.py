@@ -27,6 +27,23 @@ MEALS_PAGE_SIZE = 20
 _SCAN_WINDOW_DAYS = 7
 
 
+def _login_url_for_request(request: Request) -> str:
+    """Build a root-path-aware login URL that preserves the current page."""
+    login_url = str(request.url_for("login"))
+    login_after = request.url.path
+    root_path = request.scope.get("root_path", "")
+    if (
+        isinstance(root_path, str)
+        and root_path
+        and login_after != root_path
+        and not login_after.startswith(f"{root_path}/")
+    ):
+        login_after = f"{root_path}{login_after}"
+    if request.url.query:
+        login_after = f"{login_after}?{request.url.query}"
+    return f"{login_url}?{urlencode({'login_after': login_after})}"
+
+
 def response_data(data: dict[str, Any]) -> dict[str, Any]:
     """Unwrap meal-service response envelopes when present."""
     nested_data = data.get("data")
@@ -119,7 +136,7 @@ def page_session(
     """Return the session for a GET page, redirecting anonymous users to login."""
     session = get_optional_session(request)
     if session is None:
-        login_url = request.url_for("login")
+        login_url = _login_url_for_request(request)
         raise HTTPException(
             status_code=Config.HttpStatus.UNAUTHORIZED,
             detail=f"login_required:{login_url}",

@@ -23,6 +23,7 @@ from app.services.session_service import (
     clear_session_cookie,
     create_login_state,
     create_session,
+    can_access_login_after,
     delete_session,
     get_session,
     has_admin_role,
@@ -34,12 +35,16 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.get("/login", name="login")
-async def login() -> RedirectResponse:
+async def login(login_after: str | None = None) -> RedirectResponse:
     """Start the Keycloak Authorization Code + PKCE login flow."""
     nonce = secrets.token_urlsafe(24)
     code_verifier = generate_code_verifier()
     code_challenge = code_challenge_s256(code_verifier)
-    state = create_login_state(nonce=nonce, code_verifier=code_verifier)
+    state = create_login_state(
+        nonce=nonce,
+        code_verifier=code_verifier,
+        login_after=login_after,
+    )
     try:
         authorization_url = build_authorization_url(
             state=state,
@@ -78,9 +83,7 @@ async def callback(
             code=code,
             code_verifier=login_state["code_verifier"],
         )
-        claims = claims_from_token_response(
-            token, expected_nonce=login_state["nonce"]
-        )
+        claims = claims_from_token_response(token, expected_nonce=login_state["nonce"])
     except Exception as exc:
         logger.warning("auth_callback: token exchange or decoding failed")
         raise HTTPException(
@@ -115,10 +118,13 @@ async def callback(
         if has_admin_role(session_data)
         else "owner_restaurants_page"
     )
-    response = RedirectResponse(
-        str(request.url_for(landing_route)),
-        status_code=Config.HttpStatus.FOUND,
+    login_after = login_state["login_after"]
+    redirect_target = (
+        login_after
+        if can_access_login_after(session_data, login_after)
+        else str(request.url_for(landing_route))
     )
+    response = RedirectResponse(redirect_target, status_code=Config.HttpStatus.FOUND)
     set_session_cookie(response, session_id, max_age=max(1, expires_at - now_ts()))
     logger.info("auth_callback: session created for Keycloak subject")
     return response
