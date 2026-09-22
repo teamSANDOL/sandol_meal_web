@@ -1,7 +1,7 @@
 """sandol_meal_web FastAPI entrypoint."""
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -77,8 +77,16 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == Config.HttpStatus.UNAUTHORIZED and detail.startswith(
         "login_required:"
     ):
+        login_url = detail.removeprefix("login_required:")
+        if request.headers.get("hx-request", "").lower() == "true":
+            # A normal 302 is followed inside HTMX's XMLHttpRequest, which does
+            # not navigate the full browser page to the Keycloak login flow.
+            return Response(
+                status_code=Config.HttpStatus.OK,
+                headers={"HX-Redirect": login_url},
+            )
         return RedirectResponse(
-            detail.removeprefix("login_required:"),
+            login_url,
             status_code=Config.HttpStatus.FOUND,
         )
 

@@ -84,15 +84,22 @@
         </div>
     </section>
     {% else %}
-    <section class="sd-card" aria-labelledby="excel-upload-title">
+    <section class="sd-card sd-upload-card" aria-labelledby="excel-upload-title">
         <form method="post" action="{{ request.url_for('meal_excel_upload_submit') }}" enctype="multipart/form-data" hx-encoding="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input id="excel-file" class="hidden" type="file" name="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+            <div class="sd-upload-card-head">
+                <h2 id="excel-upload-title">Excel 파일 선택</h2>
+                <p>주간 식단표 파일을 올리면 분석 후 메뉴에 바로 반영됩니다.</p>
+            </div>
             <label class="sd-dropzone" for="excel-file" tabindex="0" id="excel-dropzone" aria-describedby="excel-upload-help">
-                <span class="sd-dropzone-icon" aria-hidden="true">↥</span>
-                <strong id="excel-upload-title">Excel 파일을 여기에 놓으세요</strong>
-                <span>또는 <span class="sd-dropzone-link">파일 선택</span></span>
-                <small id="excel-upload-help">.xlsx 파일 · 최대 {{ max_upload_size_mb|int }}MB</small>
+                <span class="sd-dropzone-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+                </span>
+                <strong>파일을 이 영역에 끌어다 놓으세요</strong>
+                <span class="sd-dropzone-or">또는 이 영역을 클릭해</span>
+                <span class="sd-dropzone-button">파일 추가</span>
+                <small id="excel-upload-help">.xlsx 파일만 가능 · 최대 {{ max_upload_size_mb|int }}MB</small>
             </label>
 
             <div id="excel-file-selected" class="sd-upload-file hidden" aria-live="polite">

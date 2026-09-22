@@ -255,24 +255,38 @@ a.sd-row:hover { border-color: var(--sd-sky); color: var(--sd-text); }
 .sd-table tr:last-child td { border-bottom: none; }
 
 /* ---------- Excel 메뉴 업로드 ---------- */
+.sd-upload-card { padding: 30px 32px 32px; }
+.sd-upload-card-head { margin-bottom: 18px; }
+.sd-upload-card-head h2 { margin: 0 0 5px; color: var(--sd-text-strong); font-size: 20px; }
+.sd-upload-card-head p { margin: 0; color: var(--sd-text-soft); font-size: 14px; }
 .sd-dropzone {
-  min-height: 220px; display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 8px; padding: 28px; margin-bottom: 18px;
-  border: 2px dashed var(--sd-border-strong); border-radius: 20px;
-  background: var(--sd-ice-pale); color: var(--sd-text-mid); cursor: pointer;
-  text-align: center; transition: border-color .15s ease, background .15s ease;
+  min-height: 258px; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 9px; padding: 30px; margin-bottom: 18px;
+  border: 2px dashed #9FCADD; border-radius: 18px;
+  background: linear-gradient(180deg, #F8FCFE 0%, var(--sd-ice-pale) 100%);
+  color: var(--sd-text-mid); cursor: pointer; text-align: center;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
 }
 .sd-dropzone:hover, .sd-dropzone:focus, .sd-dropzone.is-dragover {
   border-color: var(--sd-teal); background: var(--sd-ice);
+  box-shadow: 0 0 0 4px rgba(62, 150, 184, .12);
 }
-.sd-dropzone:focus { outline: 3px solid rgba(62, 150, 184, .2); outline-offset: 2px; }
+.sd-dropzone:focus { outline: none; }
+.sd-dropzone:focus-visible { outline: 3px solid rgba(62, 150, 184, .28); outline-offset: 3px; }
 .sd-dropzone strong { color: var(--sd-text-strong); font-size: 17px; }
 .sd-dropzone small { color: var(--sd-text-faint); font-size: 12px; }
 .sd-dropzone-icon {
-  width: 48px; height: 48px; display: grid; place-items: center;
-  border-radius: 50%; background: #fff; color: var(--sd-teal); font-size: 27px;
+  width: 54px; height: 54px; display: grid; place-items: center;
+  border-radius: 16px; background: #fff; color: var(--sd-teal);
+  border: 1px solid #CDE7F1; box-shadow: 0 5px 14px rgba(46, 117, 145, .12);
 }
-.sd-dropzone-link { color: var(--sd-teal-deep); font-weight: 700; text-decoration: underline; }
+.sd-dropzone-icon svg { width: 27px; height: 27px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.sd-dropzone-or { color: var(--sd-text-faint); font-size: 13px; }
+.sd-dropzone-button {
+  color: var(--sd-navy); font-size: 14px; font-weight: 800;
+  text-decoration: underline; text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
 .sd-upload-file, .sd-upload-result-head, .sd-upload-actions {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
@@ -347,6 +361,7 @@ a.sd-row:hover { border-color: var(--sd-sky); color: var(--sd-text); }
   .sd-page-head { align-items: flex-start; flex-direction: column; }
   .sd-upload-result-head { flex-direction: column; }
   .sd-upload-meta { grid-template-columns: 1fr; }
-  .sd-dropzone { min-height: 190px; padding: 22px 16px; }
+  .sd-upload-card { padding: 24px 20px; }
+  .sd-dropzone { min-height: 220px; padding: 22px 16px; }
   .sd-upload-actions .sd-btn { width: 100%; }
 }
