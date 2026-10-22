@@ -110,3 +110,74 @@ def test_admin_sync_page_shows_detailed_failure(monkeypatch: Any) -> None:
     assert "동기화 실패" in response.text
     assert "no_menus" in response.text
     assert "날짜 헤더, TIP/E동 식당 블록 또는 메뉴 셀을 찾지 못했습니다." in response.text
+
+
+def test_admin_sync_page_links_original_download(monkeypatch: Any) -> None:
+    """Each archived file row offers a download link for its original."""
+    _patch_admin_session(monkeypatch)
+    monkeypatch.setattr(
+        admin.meal_service_client,
+        "list_excel_uploads",
+        AsyncMock(return_value=UPLOADS),
+    )
+
+    with TestClient(main.app) as client:
+        response = client.get("/admin/meal-sync")
+
+    assert "/admin/meal-sync/uploads/latest-upload/file" in response.text
+    assert "/admin/meal-sync/uploads/older-upload/file" in response.text
+
+
+def test_admin_download_returns_original_workbook(monkeypatch: Any) -> None:
+    """The original bytes and filename header from meal-service are relayed."""
+    _patch_admin_session(monkeypatch)
+    download = AsyncMock(
+        return_value=(b"workbook", "attachment; filename*=utf-8''%EC%8B%9D.xlsx")
+    )
+    monkeypatch.setattr(admin.meal_service_client, "download_excel_upload", download)
+
+    with TestClient(main.app) as client:
+        response = client.get("/admin/meal-sync/uploads/latest-upload/file")
+
+    assert response.status_code == 200
+    assert response.content == b"workbook"
+    assert "spreadsheetml" in response.headers["content-type"]
+    assert response.headers["content-disposition"].startswith("attachment;")
+    assert response.headers["cache-control"] == "no-store"
+    download.assert_awaited_once_with(user_id="meal-admin", upload_id="latest-upload")
+
+
+def test_admin_download_failure_returns_to_sync_page(monkeypatch: Any) -> None:
+    """A missing upload sends the admin back to the list with the reason."""
+    _patch_admin_session(monkeypatch)
+    monkeypatch.setattr(
+        admin.meal_service_client,
+        "download_excel_upload",
+        AsyncMock(side_effect=admin.MealServiceError(404, "업로드 파일을 찾을 수 없습니다.")),
+    )
+
+    with TestClient(main.app) as client:
+        response = client.get(
+            "/admin/meal-sync/uploads/missing/file", follow_redirects=False
+        )
+
+    assert response.status_code == 302
+    assert "/admin/meal-sync?error=" in response.headers["location"]
+
+
+def test_non_admin_cannot_download(monkeypatch: Any) -> None:
+    """An uploader-only session is refused before meal-service is called."""
+    from app.services import page_helpers  # noqa: PLC0415
+
+    session = {**ADMIN_SESSION, "roles": [Config.MEAL_UPLOADER_ROLE]}
+    monkeypatch.setattr(page_helpers, "get_optional_session", lambda _request: session)
+    download = AsyncMock(return_value=(b"workbook", None))
+    monkeypatch.setattr(admin.meal_service_client, "download_excel_upload", download)
+
+    with TestClient(main.app) as client:
+        response = client.get(
+            "/admin/meal-sync/uploads/latest-upload/file", follow_redirects=False
+        )
+
+    assert response.status_code == 403
+    download.assert_not_awaited()

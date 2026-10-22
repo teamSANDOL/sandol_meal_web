@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from datetime import date
 from typing import Any, Literal, TypedDict, cast
+from urllib.parse import quote
 
 import httpx
 
@@ -783,6 +784,20 @@ class MealServiceClient:
             "/meals/excel/uploads",
             user_id=user_id,
         )
+
+    async def download_excel_upload(
+        self,
+        *,
+        user_id: str,
+        upload_id: str,
+    ) -> tuple[bytes, str | None]:
+        """Return an archived workbook and its Content-Disposition header."""
+        response = await self._request(
+            "GET",
+            f"/meals/excel/uploads/{quote(upload_id, safe='')}/file",
+            user_id=user_id,
+        )
+        return response.content, response.headers.get("content-disposition")
 
     async def sync_meals(
         self,

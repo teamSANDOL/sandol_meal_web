@@ -83,7 +83,7 @@
         <div class="sd-table-wrap">
             <div class="sd-table-scroll">
                 <table class="sd-table">
-                    <thead><tr><th>파일</th><th>업로드 시각</th><th>분석</th><th>최근 동기화</th><th>대상 기간</th></tr></thead>
+                    <thead><tr><th>파일</th><th>업로드 시각</th><th>분석</th><th>최근 동기화</th><th>대상 기간</th><th>원본</th></tr></thead>
                     <tbody>
                     {% for upload in uploads %}
                     <tr>
@@ -92,6 +92,7 @@
                         <td>{{ '성공' if upload.get('analysis_status') == 'completed' else ('실패' if upload.get('analysis_status') == 'failed' else '대기') }}{% if upload.get('analysis_error_message') %}<div class="sd-help sd-help--danger">{{ upload.get('analysis_error_message') }}</div>{% endif %}</td>
                         <td>{{ '성공' if upload.get('sync_status') == 'completed' else ('실패' if upload.get('sync_status') == 'failed' else '미실행') }}{% if upload.get('sync_error_message') %}<div class="sd-help sd-help--danger">{{ upload.get('sync_error_message') }}</div>{% endif %}</td>
                         <td>{{ upload.get('period', {}).get('start_date', '-') }}{% if upload.get('period') %} ~ {{ upload.get('period', {}).get('end_date', '-') }}{% endif %}</td>
+                        <td>{% if upload.get('upload_id') %}<a class="sd-btn sd-btn--ghost sd-btn--sm" href="{{ request.url_for('admin_meal_upload_download', upload_id=upload.get('upload_id')) }}" download>다운로드</a>{% else %}-{% endif %}</td>
                     </tr>
                     {% endfor %}
                     </tbody>
