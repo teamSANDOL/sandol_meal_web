@@ -5,7 +5,7 @@ from typing import Annotated, Any
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Query, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.config import Config
 from app.services import page_helpers as ph
@@ -182,6 +182,34 @@ async def admin_meal_sync_page(
         latest_upload_id=uploads[0].get("upload_id") if uploads else None,
         sync_result=None,
         error_message=error_message,
+    )
+
+
+@router.get(
+    "/meal-sync/uploads/{upload_id}/file",
+    name="admin_meal_upload_download",
+)
+async def admin_meal_upload_download(request: Request, upload_id: str) -> Response:
+    """Stream an archived original workbook to the administrator."""
+    session = ph.page_session(request, admin=True)
+    try:
+        content, disposition = await meal_service_client.download_excel_upload(
+            user_id=session["user_id"],
+            upload_id=upload_id,
+        )
+    except MealServiceError as exc:
+        url = request.url_for("admin_meal_sync_page")
+        return RedirectResponse(
+            f"{url}?{urlencode({'error': exc.message})}",
+            status_code=Config.HttpStatus.FOUND,
+        )
+    return Response(
+        content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": disposition or 'attachment; filename="menu.xlsx"',
+            "Cache-Control": "no-store",
+        },
     )
 
 
