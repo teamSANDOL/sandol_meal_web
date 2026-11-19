@@ -126,6 +126,7 @@ def test_admin_sync_page_links_original_download(monkeypatch: Any) -> None:
 
     assert "/admin/meal-sync/uploads/latest-upload/file" in response.text
     assert "/admin/meal-sync/uploads/older-upload/file" in response.text
+    assert 'file" download' not in response.text
 
 
 def test_admin_download_returns_original_workbook(monkeypatch: Any) -> None:
